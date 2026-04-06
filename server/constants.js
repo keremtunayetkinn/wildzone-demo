@@ -8,6 +8,7 @@ const CONSTANTS = {
   PISTOL_COOLDOWN: 400,
   PISTOL_SPEED: 600,
   PISTOL_RANGE: 800,
+  ARMOR_EQUIP_COOLDOWN: 5000,
   NETWORK_THROTTLE: 50,
   CHARACTERS: ['char_1', 'char_2', 'char_3', 'char_4'],
   ACCESSORIES: ['hat_1', 'hat_2', 'hat_3', 'mask_1', 'mask_2', 'cape_1', 'cape_2', null]

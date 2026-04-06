@@ -12,6 +12,7 @@ class GameRoom {
     this.players = new Map();
     this.shootCooldowns = new Map();
     this.moveCooldowns = new Map();
+    this.armorEquipCooldowns = new Map();
     this.pendingHits = new Set(); // player:shoot çağrılan ama henüz player:hit gelmeyen oyuncular
   }
 
@@ -47,6 +48,7 @@ class GameRoom {
     this.players.delete(socketId);
     this.shootCooldowns.delete(socketId);
     this.moveCooldowns.delete(socketId);
+    this.armorEquipCooldowns.delete(socketId);
     this.pendingHits.delete(socketId);
   }
 
@@ -118,6 +120,13 @@ class GameRoom {
     const data = ARMOR_DATA[armorId];
     if (!data) return false;
     if (player.armor && player.armor.level >= data.level) return false;
+
+    // Zırh kuşanma cooldown'u — 5 saniyede bir (spam/hile önlemi)
+    const now = Date.now();
+    const lastEquip = this.armorEquipCooldowns.get(socketId) || 0;
+    if (now - lastEquip < CONSTANTS.ARMOR_EQUIP_COOLDOWN) return false;
+    this.armorEquipCooldowns.set(socketId, now);
+
     player.armor = { ...data, durability: data.maxDurability };
     return true;
   }
