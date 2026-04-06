@@ -41,6 +41,7 @@ class GameRoom {
     };
 
     this.players.set(socketId, player);
+    this.moveCooldowns.set(socketId, Date.now()); // İlk hareket de mesafe kontrolüne tabi olsun
     return player;
   }
 
