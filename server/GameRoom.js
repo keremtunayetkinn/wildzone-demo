@@ -12,6 +12,7 @@ class GameRoom {
     this.players = new Map();
     this.shootCooldowns = new Map();
     this.moveCooldowns = new Map();
+    this.pendingHits = new Set(); // player:shoot çağrılan ama henüz player:hit gelmeyen oyuncular
   }
 
   canJoin() {
@@ -46,6 +47,7 @@ class GameRoom {
     this.players.delete(socketId);
     this.shootCooldowns.delete(socketId);
     this.moveCooldowns.delete(socketId);
+    this.pendingHits.delete(socketId);
   }
 
   getPlayer(socketId) {
@@ -68,6 +70,15 @@ class GameRoom {
     const player = this.players.get(socketId);
     if (!player || !player.alive) return false;
 
+    // Hız kontrolü: ağ gecikmesine 2.5x tolerans tanıyarak teleport'u reddet
+    if (lastMove > 0) {
+      const elapsed = (now - lastMove) / 1000;
+      const maxDist = CONSTANTS.PLAYER_SPEED * 2.5 * elapsed;
+      const dx = (Number(x) || player.x) - player.x;
+      const dy = (Number(y) || player.y) - player.y;
+      if (Math.sqrt(dx * dx + dy * dy) > maxDist) return false;
+    }
+
     // Clamp coordinates to map bounds
     player.x = Math.max(0, Math.min(CONSTANTS.MAP_WIDTH, Number(x) || player.x));
     player.y = Math.max(0, Math.min(CONSTANTS.MAP_HEIGHT, Number(y) || player.y));
@@ -82,6 +93,7 @@ class GameRoom {
     const last = this.shootCooldowns.get(socketId) || 0;
     if (now - last < CONSTANTS.PISTOL_COOLDOWN) return false;
     this.shootCooldowns.set(socketId, now);
+    this.pendingHits.add(socketId); // atış kaydedildi, isabet bekleniyor
     return true;
   }
 
@@ -118,6 +130,10 @@ class GameRoom {
   }
 
   applyDamage(targetId, shooterSocketId) {
+    // player:shoot çağrılmadan gelen player:hit event'lerini reddet
+    if (!this.pendingHits.has(shooterSocketId)) return null;
+    this.pendingHits.delete(shooterSocketId);
+
     // targetId socket ID veya UUID olabilir — ikisini de dene
     const target = this.players.get(targetId) || this.getPlayerByUUID(targetId);
     const shooter = this.players.get(shooterSocketId);
