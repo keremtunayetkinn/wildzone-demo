@@ -68,17 +68,6 @@ export default class GameScene extends Phaser.Scene {
 
     this.events.on('missile_explode', ({ x, y, radius, damage }) => {
       this._doSplashDamage(x, y, radius, damage);
-      // Barikat splash hasarı
-      if (this.barricadeSystem) {
-        for (const b of this.barricadeSystem.activeBarricades) {
-          if (!b.image?.active) continue;
-          const dx = b.x - x;
-          const dy = b.y - y;
-          if (dx * dx + dy * dy <= radius * radius) {
-            b.takeDamage('bazooka');
-          }
-        }
-      }
     });
   }
 
@@ -112,6 +101,7 @@ export default class GameScene extends Phaser.Scene {
       this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
 
       this.events.emit('weaponready');
+      this.events.emit('resource_changed', this.player.resources.getAll());
       data.players.forEach(p => this._addRemotePlayer(p));
 
       // Spawn loot after map and player are ready
@@ -239,24 +229,28 @@ export default class GameScene extends Phaser.Scene {
   }
 
   _doSplashDamage(x, y, radius, damage) {
-    const r2 = radius * radius;
-
-    // Yerel oyuncu (ateşleyen dahil)
+    // Yerel oyuncu (ateşleyen dahil) — linear falloff
     if (this.player?.alive) {
       const dx = this.player.sprite.x - x;
       const dy = this.player.sprite.y - y;
-      if (dx * dx + dy * dy <= r2) {
-        this.player.takeDamage(damage);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < radius) {
+        const falloff = 1 - dist / radius;
+        this.player.takeDamage(Math.round(damage * falloff));
         this.events.emit('hp_changed', this.player.hp);
       }
     }
 
-    // TestBots
+    // TestBots — linear falloff
     for (const bot of this.testBots ?? []) {
       if (bot.alive) {
         const dx = bot.sprite.x - x;
         const dy = bot.sprite.y - y;
-        if (dx * dx + dy * dy <= r2) bot.setHP(bot.hp - damage);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < radius) {
+          const falloff = 1 - dist / radius;
+          bot.setHP(bot.hp - Math.round(damage * falloff));
+        }
       }
     }
 
@@ -323,7 +317,10 @@ export default class GameScene extends Phaser.Scene {
     }
 
     const hud = this.scene.get('HUDScene');
-    if (hud) hud.updateStamina(this.player.stamina);
+    if (hud) {
+      hud.updateStamina(this.player.stamina);
+      hud.updateHUDHP(this.player.hp);
+    }
 
     // Zıpkın çekme sırasında WASD hareketini devre dışı bırak
     if (!this.weapon?.isHarpoonPulling()) {
@@ -452,6 +449,7 @@ export default class GameScene extends Phaser.Scene {
       + [...this.remotePlayers.values()].filter(rp => rp.alive).length
       + (this.testBots ?? []).filter(b => b.alive).length;
     const total = this._totalPlayers ?? rank;
+    this.lootSystem.dropPlayerLoot(this.player);
     this.player.die();
     this._updateHUD();
     this._showDeathScreen(rank, total);

@@ -33,10 +33,11 @@ export default class BarricadeEntity {
   get x() { return this.image.x; }
   get y() { return this.image.y; }
 
-  takeDamage(weaponId) {
+  takeDamage(weaponId, multiplier = 1) {
     if (!this.image.active || this.currentHP <= 0) return;
 
-    const dmg = BARRICADE.damage[weaponId] ?? BARRICADE.damage.bullet_default;
+    const baseDmg = BARRICADE.damage[weaponId] ?? BARRICADE.damage.bullet_default;
+    const dmg = Math.round(baseDmg * multiplier);
     this.currentHP = Math.max(0, this.currentHP - dmg);
     this.updateVisualState();
 

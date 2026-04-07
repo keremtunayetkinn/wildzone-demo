@@ -108,7 +108,7 @@ export const WEAPONS = {
     type: 'ranged',
     damage: 90,
     splashDamage: 90,
-    splashRadius: 100,
+    splashRadius: 140,
     range: Infinity,
     cooldown: 2500,
     ammoType: 'ammo_bazooka',

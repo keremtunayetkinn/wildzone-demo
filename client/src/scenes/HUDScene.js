@@ -23,14 +23,6 @@ export default class HUDScene extends Phaser.Scene {
     // Koleksiyon: izleyici modunda gizlenecek tüm oyuncu HUD elemanları
     this._playerHUD = [];
 
-    // ── Top-left: Stamina bar ─────────────────────────────────────────────
-    this._playerHUD.push(this.add.rectangle(8, 8, 200, 20, 0x000000, 0.65).setOrigin(0, 0));
-    this._playerHUD.push(this.add.text(14, 18, '⚡', { fontSize: '11px' }).setOrigin(0, 0.5));
-    this.staminaBarBg = this.add.rectangle(30, 18, 172, 7, 0x444444).setOrigin(0, 0.5);
-    this.staminaBar   = this.add.rectangle(30, 18, 172, 7, 0xf4d03f).setOrigin(0, 0.5);
-    this._playerHUD.push(this.staminaBarBg, this.staminaBar);
-    this._staminaBlinking = false;
-
     // ── Top-right: player count ────────────────────────────────────────────
     this.add.rectangle(W - 8, 8, 150, 36, 0x000000, 0.65).setOrigin(1, 0);
     this.countText = this.add.text(W - 140, 16, '👥 1 / 40', {
@@ -86,10 +78,30 @@ export default class HUDScene extends Phaser.Scene {
     this.slotAmmo3 = this.add.text(slot3X + 4, slotY - 16, '∞', {
       fontSize: '11px', fill: '#886644', fontFamily: 'monospace'
     });
+    // ── Stamina bar (above weapon slots, orange) ────────────────────────
+    const barW = totalW;
+    const barH = 8;
+    const staminaY = slotY - slotH - 6;
+    this._staminaMaxW = barW;
+    this._staminaBg = this.add.rectangle(slot1X, staminaY, barW, barH, 0x222222)
+      .setOrigin(0, 0.5);
+    this.staminaBar = this.add.rectangle(slot1X, staminaY, barW, barH, 0xff8c00)
+      .setOrigin(0, 0.5);
+    this._staminaBlinking = false;
+
+    // ── Health bar (above stamina bar, green/yellow/red) ──────────────
+    const healthY = staminaY - barH - 4;
+    this._hpMaxW = barW;
+    this._hpBg = this.add.rectangle(slot1X, healthY, barW, barH, 0x222222)
+      .setOrigin(0, 0.5);
+    this.hpBar = this.add.rectangle(slot1X, healthY, barW, barH, 0x4caf50)
+      .setOrigin(0, 0.5);
+
     this._playerHUD.push(
       this.slotBg1, this.slotBorder1, this.slotLabel1, this.slotWeapon1, this.slotAmmo1,
       this.slotBg2, this.slotBorder2, this.slotLabel2, this.slotWeapon2, this.slotAmmo2,
-      this.slotBg3, this.slotBorder3, this.slotLabel3, this.slotWeapon3, this.slotAmmo3
+      this.slotBg3, this.slotBorder3, this.slotLabel3, this.slotWeapon3, this.slotAmmo3,
+      this._staminaBg, this.staminaBar, this._hpBg, this.hpBar
     );
 
     // ── Bottom-right: ammo counter ────────────────────────────────────────
@@ -197,15 +209,19 @@ export default class HUDScene extends Phaser.Scene {
 
   // ── Public update methods (called from GameScene) ──────────────────────
 
-  updateHP() {} // HP artık karakter üstünde gösteriliyor
+  updateHUDHP(hp) {
+    const pct = hp / 100;
+    this.hpBar.setDisplaySize(this._hpMaxW * pct, 8);
+
+    if (pct > 0.5)       this.hpBar.setFillStyle(0x4caf50);
+    else if (pct > 0.25) this.hpBar.setFillStyle(0xffeb3b);
+    else                 this.hpBar.setFillStyle(0xf44336);
+  }
 
   updateStamina(stamina) {
     const pct = stamina / 100;
-    this.staminaBar.setDisplaySize(172 * pct, 7);
-
-    if (pct > 0.5)       this.staminaBar.setFillStyle(0xf4d03f);
-    else if (pct > 0.15) this.staminaBar.setFillStyle(0xe67e22);
-    else                 this.staminaBar.setFillStyle(0xe74c3c);
+    this.staminaBar.setDisplaySize(this._staminaMaxW * pct, 8);
+    this.staminaBar.setFillStyle(0xff8c00);
 
     // Blink when depleted
     if (stamina <= 0 && !this._staminaBlinking) {

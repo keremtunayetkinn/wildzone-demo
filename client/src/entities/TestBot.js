@@ -149,12 +149,38 @@ export default class TestBot {
     // Kalan mervileri temizle
     for (const b of this._bullets) { if (b.active) b.destroy(); }
     this._bullets = [];
+
+    // Drop loot: pistol + random resources
+    this._dropLoot();
+
     if (this._onDied) this._onDied();
     this.scene.tweens.add({
       targets: [this.sprite, this.nameLabel, this.hpBar, this.hpBarBg],
       alpha: 0, duration: 1000,
       onComplete: () => this.destroy()
     });
+  }
+
+  _dropLoot() {
+    const ls = this.scene.lootSystem;
+    if (!ls) return;
+    const { x, y } = this.sprite;
+    const offset = () => Phaser.Math.Between(-35, 35);
+
+    // Drop the pistol the bot was using
+    ls.createDrop(x + offset(), y + offset(), {
+      type: 'weapon', id: 'pistol', quantity: 1,
+      rarity: 'common', magazineAmmo: WEAPONS.pistol.magSize,
+    });
+
+    // Drop some random resources
+    const resTypes = ['wood', 'stone', 'metal'];
+    for (const res of resTypes) {
+      const amount = Phaser.Math.Between(5, 20);
+      ls.createDrop(x + offset(), y + offset(), {
+        type: 'resource', id: res, quantity: amount, rarity: 'common',
+      });
+    }
   }
 
   _getNearestTarget() {

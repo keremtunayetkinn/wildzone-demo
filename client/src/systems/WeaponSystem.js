@@ -454,6 +454,32 @@ export default class WeaponSystem {
     });
     this.scene.cameras.main.shake(200, 0.015);
 
+    // Splash damage to barricades in radius (linear falloff)
+    if (this.scene.barricadeSystem) {
+      for (const b of [...this.scene.barricadeSystem.activeBarricades]) {
+        if (!b.image?.active) continue;
+        const dx = b.x - cx, dy = b.y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < r) {
+          const falloff = 1 - dist / r;
+          b.takeDamage('bazooka', falloff);
+        }
+      }
+    }
+
+    // Splash damage to props in radius (linear falloff)
+    if (this.scene.propSystem) {
+      for (const p of this.scene.propSystem.props) {
+        if (!p.active) continue;
+        const dx = p.x - cx, dy = p.y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < r) {
+          const falloff = 1 - dist / r;
+          p.takeDamage(Math.round(dmg * falloff));
+        }
+      }
+    }
+
     // Alan hasarını sahneye bildir
     this.scene.events.emit('missile_explode', { x: cx, y: cy, radius: r, damage: dmg });
   }
@@ -475,7 +501,9 @@ export default class WeaponSystem {
 
       let expired;
       if (range === Infinity) {
-        expired = bullet.x < -50 || bullet.x > 3050 || bullet.y < -50 || bullet.y > 3050;
+        const bounds = this.scene.physics.world.bounds;
+        expired = bullet.x < -50 || bullet.x > bounds.width + 50 ||
+                  bullet.y < -50 || bullet.y > bounds.height + 50;
       } else {
         expired = distSq >= range * range;
       }

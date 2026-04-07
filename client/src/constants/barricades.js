@@ -10,22 +10,22 @@ export const BARRICADE = {
   materials: {
     wood: {
       label:    'Ahşap',
-      cost:     { type: 'wood',  amount: 25 },  // bol kaynak → daha fazla birim
+      cost:     { type: 'wood',  amount: 10 },
       maxHP:    80,                              // geçici/atılabilir
       colors:   { full: 0x8B6914, damaged1: 0x7A5C10, damaged2: 0x6B4F0C, critical: 0x5C4008 },
       preview:  0xc8a060,
     },
     stone: {
       label:    'Taş',
-      cost:     { type: 'stone', amount: 12 },  // respawn yok → az birim ama kalıcı harcama
-      maxHP:    220,
+      cost:     { type: 'stone', amount: 10 },
+      maxHP:    140,
       colors:   { full: 0x888888, damaged1: 0x707070, damaged2: 0x585858, critical: 0x404040 },
       preview:  0xaaaaaa,
     },
     metal: {
       label:    'Metal',
-      cost:     { type: 'metal', amount: 8 },   // en nadir kaynak → en az birim, yüksek HP
-      maxHP:    420,                             // premium: taştan ~2x, ahşaptan ~5x
+      cost:     { type: 'metal', amount: 10 },
+      maxHP:    180,
       colors:   { full: 0x7799aa, damaged1: 0x5f7f99, damaged2: 0x4a6880, critical: 0x375060 },
       preview:  0x88ccee,
     },
@@ -41,7 +41,7 @@ export const BARRICADE = {
     shotgun:        8,
     smg:            8,
     sniper:         20,
-    bazooka:        50,
+    bazooka:        160,
     harpoon:        10,
     bullet_default: 10,
   },

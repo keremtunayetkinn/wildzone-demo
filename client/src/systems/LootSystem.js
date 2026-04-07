@@ -53,7 +53,8 @@ const LOOT_NAMES = {
   sword: 'Kılıç', pickaxe: 'Kazma', axe: 'Balta',
   ammo_pistol: 'Tabanca Mermisi', ammo_shotgun: 'Pompalı Fişeği',
   ammo_smg: 'Makineli Mermisi', ammo_sniper: 'Sniper Mermisi', ammo_bazooka: 'Bazuka Roketi', ammo_harpoon: 'Zıpkın Oku',
-  armor_1: 'Hafif Yelek', armor_2: 'Taktik Yelek', armor_3: 'Ağır Zırh'
+  armor_1: 'Hafif Yelek', armor_2: 'Taktik Yelek', armor_3: 'Ağır Zırh',
+  wood: 'Ahşap', stone: 'Taş', metal: 'Metal'
 };
 
 export default class LootSystem {
@@ -238,7 +239,7 @@ export default class LootSystem {
 
   _getLootName(itemData) {
     const base = LOOT_NAMES[itemData.id] || itemData.id;
-    if (itemData.type === 'ammo') return `${itemData.quantity}x ${base}`;
+    if (itemData.type === 'ammo' || itemData.type === 'resource') return `${itemData.quantity}x ${base}`;
     return base;
   }
 
@@ -295,6 +296,11 @@ export default class LootSystem {
         this._showPickupMessage('Daha iyi zırh kuşanılı', lootDrop.x, lootDrop.y, '#ffaa44');
         return;
       }
+    } else if (type === 'resource') {
+      player.resources.add(id, quantity);
+      this.scene.events.emit('resource_changed', player.resources.getAll());
+      collected = true;
+      message = `+${quantity} ${LOOT_NAMES[id] || id}`;
     }
 
     if (collected) {
@@ -438,6 +444,67 @@ export default class LootSystem {
       drop.setDepth(1.5);
       this.lootDrops.push(drop);
     });
+  }
+
+  dropPlayerLoot(player) {
+    const x = player.sprite.x;
+    const y = player.sprite.y;
+
+    // Drop all weapon slots (includes magazine ammo in itemData)
+    for (let slot = 0; slot <= 2; slot++) {
+      const weaponId = player.inventory.weapons[slot];
+      if (!weaponId) continue;
+
+      const weaponData = WEAPONS[weaponId];
+      const currentMag = player.inventory.magazineAmmo[slot] ?? 0;
+      const itemData = {
+        type: weaponData.type === 'utility' ? 'utility' : weaponData.type === 'melee' ? 'melee' : 'weapon',
+        id: weaponId,
+        quantity: 1,
+        rarity: weaponData.rarity || 'common',
+        magazineAmmo: currentMag
+      };
+
+      if (weaponId === 'bush' && player.isCamouflaged) {
+        player.deactivateCamouflage();
+      }
+
+      const dx = Phaser.Math.Between(-35, 35);
+      const dy = Phaser.Math.Between(-35, 35);
+      const drop = new LootDrop(this.scene, x + dx, y + dy, itemData);
+      drop.setDepth(1.5);
+      this.lootDrops.push(drop);
+    }
+
+    // Drop inventory ammo (reserve — not magazine)
+    for (const [ammoType, quantity] of Object.entries(player.inventory.ammo)) {
+      if (quantity <= 0) continue;
+      const itemData = { type: 'ammo', id: ammoType, quantity, rarity: 'common' };
+      const dx = Phaser.Math.Between(-35, 35);
+      const dy = Phaser.Math.Between(-35, 35);
+      const drop = new LootDrop(this.scene, x + dx, y + dy, itemData);
+      drop.setDepth(1.5);
+      this.lootDrops.push(drop);
+    }
+
+    // Drop resources
+    const resources = player.resources.getAll();
+    for (const [resType, amount] of Object.entries(resources)) {
+      if (amount <= 0) continue;
+      const itemData = { type: 'resource', id: resType, quantity: amount, rarity: 'common' };
+      const dx = Phaser.Math.Between(-35, 35);
+      const dy = Phaser.Math.Between(-35, 35);
+      const drop = new LootDrop(this.scene, x + dx, y + dy, itemData);
+      drop.setDepth(1.5);
+      this.lootDrops.push(drop);
+    }
+  }
+
+  createDrop(x, y, itemData) {
+    const drop = new LootDrop(this.scene, x, y, itemData);
+    drop.setDepth(1.5);
+    this.lootDrops.push(drop);
+    return drop;
   }
 
   getActiveLootDrops() {
