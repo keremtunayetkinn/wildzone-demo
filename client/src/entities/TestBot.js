@@ -115,6 +115,17 @@ export default class TestBot {
         player.takeDamage(WEAPONS.pistol.damage);
         player.updateArmorDisplay();
         this.scene.events.emit('inventory_changed');
+
+        // Camouflage check: deactivate if bush armor broke, reveal temporarily if still active
+        if (player.isCamouflaged) {
+          const bushGone = !player.armorSystem.currentArmor || player.armorSystem.currentArmor.id !== 'bush';
+          if (bushGone) {
+            player.deactivateCamouflage();
+          } else {
+            player.revealCamoInfo();
+          }
+        }
+
         if (player.hp <= 0) this.scene._handleLocalDeath();
       });
     }

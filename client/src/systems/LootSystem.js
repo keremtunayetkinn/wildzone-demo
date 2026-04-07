@@ -27,7 +27,6 @@ const LOOT_POOL = {
     { type: 'weapon',  id: 'sniper',  rarity: 'rare'     },
     { type: 'weapon',  id: 'bazooka', rarity: 'rare'     },
     { type: 'weapon',  id: 'harpoon', rarity: 'uncommon' },
-    { type: 'utility', id: 'bush',    rarity: 'uncommon' },
     { type: 'melee',   id: 'sword',   rarity: 'common'   },
     { type: 'melee',   id: 'pickaxe', rarity: 'uncommon' },
     { type: 'melee',   id: 'axe',     rarity: 'rare'     },
@@ -41,6 +40,7 @@ const LOOT_POOL = {
     { type: 'ammo', id: 'ammo_harpoon', quantity: 3,  rarity: 'uncommon' },
   ],
   armor: [
+    { type: 'armor', id: 'bush',    rarity: 'uncommon' },
     { type: 'armor', id: 'armor_1', rarity: 'common'   },
     { type: 'armor', id: 'armor_2', rarity: 'uncommon' },
     { type: 'armor', id: 'armor_3', rarity: 'rare'     },
@@ -287,11 +287,30 @@ export default class LootSystem {
       collected = true;
       message = `+${quantity} ${LOOT_NAMES[id] || id}`;
     } else if (type === 'armor') {
+      const oldArmor = player.armorSystem.currentArmor;
       const equipped = player.armorSystem.equipArmor(id);
       if (equipped) {
         this.scene.network?.sendEquipArmor(id);
         collected = true;
         message = `+${LOOT_NAMES[id] || id}`;
+
+        // Drop the old armor as loot if it was swapped (bush ↔ armor)
+        if (oldArmor && typeof equipped === 'object') {
+          const dropData = { type: 'armor', id: oldArmor.id, quantity: 1, rarity: oldArmor.rarity || 'common' };
+          const dx = lootDrop.x + Phaser.Math.Between(-20, 20);
+          const dy = lootDrop.y + Phaser.Math.Between(-20, 20);
+          const drop = new LootDrop(this.scene, dx, dy, dropData);
+          drop.setDepth(1.5);
+          this.lootDrops.push(drop);
+          message += `  ↔  -${LOOT_NAMES[oldArmor.id] || oldArmor.id}`;
+        }
+
+        // Camouflage: activate when picking up bush, deactivate when replacing bush
+        if (id === 'bush') {
+          if (!player.isCamouflaged) player.activateCamouflage();
+        } else if (oldArmor?.id === 'bush') {
+          if (player.isCamouflaged) player.deactivateCamouflage();
+        }
       } else {
         this._showPickupMessage('Daha iyi zırh kuşanılı', lootDrop.x, lootDrop.y, '#ffaa44');
         return;
@@ -353,11 +372,6 @@ export default class LootSystem {
       magazineAmmo: currentMag
     };
 
-    // Kamuflaj silahı bırakılırsa camo bozulur
-    if (weaponId === 'bush' && player.isCamouflaged) {
-      player.deactivateCamouflage();
-    }
-
     player.inventory.removeWeapon(slot);
 
     // Aktif slot boşaldıysa geçiş yap
@@ -390,10 +404,6 @@ export default class LootSystem {
 
     const weaponData = WEAPONS[weaponId];
     const currentMag = player.inventory.magazineAmmo[slot] ?? 0;
-
-    if (weaponId === 'bush' && player.isCamouflaged) {
-      player.deactivateCamouflage();
-    }
 
     player.inventory.removeWeapon(slot);
 
@@ -465,10 +475,6 @@ export default class LootSystem {
         magazineAmmo: currentMag
       };
 
-      if (weaponId === 'bush' && player.isCamouflaged) {
-        player.deactivateCamouflage();
-      }
-
       const dx = Phaser.Math.Between(-35, 35);
       const dy = Phaser.Math.Between(-35, 35);
       const drop = new LootDrop(this.scene, x + dx, y + dy, itemData);
@@ -483,6 +489,17 @@ export default class LootSystem {
       const dx = Phaser.Math.Between(-35, 35);
       const dy = Phaser.Math.Between(-35, 35);
       const drop = new LootDrop(this.scene, x + dx, y + dy, itemData);
+      drop.setDepth(1.5);
+      this.lootDrops.push(drop);
+    }
+
+    // Drop equipped armor (including bush camo)
+    if (player.armorSystem.isEquipped()) {
+      const armor = player.armorSystem.currentArmor;
+      const armorData = { type: 'armor', id: armor.id, quantity: 1, rarity: armor.rarity || 'common' };
+      const dx = Phaser.Math.Between(-35, 35);
+      const dy = Phaser.Math.Between(-35, 35);
+      const drop = new LootDrop(this.scene, x + dx, y + dy, armorData);
       drop.setDepth(1.5);
       this.lootDrops.push(drop);
     }

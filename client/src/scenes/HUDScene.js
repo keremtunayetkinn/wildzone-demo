@@ -250,7 +250,7 @@ export default class HUDScene extends Phaser.Scene {
     // Slot 1 (ateşli/utility)
     const w1Id = inventory.weapons[0];
     this.slotWeapon1.setText(w1Id ? (WEAPON_LABELS[w1Id] || w1Id) : '—').setFill(w1Id ? '#ffffff' : '#555555');
-    if (w1Id && w1Id !== 'bush') {
+    if (w1Id) {
       const mag1 = inventory.magazineAmmo[0] || 0;
       const inv1 = inventory.ammo[inventory.getWeaponData(w1Id)?.ammoType] || 0;
       this.slotAmmo1.setText(`${mag1}/${inv1}`);
@@ -261,7 +261,7 @@ export default class HUDScene extends Phaser.Scene {
     // Slot 2 (ateşli/utility)
     const w2Id = inventory.weapons[1];
     this.slotWeapon2.setText(w2Id ? (WEAPON_LABELS[w2Id] || w2Id) : '—').setFill(w2Id ? '#ffffff' : '#555555');
-    if (w2Id && w2Id !== 'bush') {
+    if (w2Id) {
       const mag2 = inventory.magazineAmmo[1] || 0;
       const inv2 = inventory.ammo[inventory.getWeaponData(w2Id)?.ammoType] || 0;
       this.slotAmmo2.setText(`${mag2}/${inv2}`);
@@ -299,9 +299,10 @@ export default class HUDScene extends Phaser.Scene {
       this.ammoInvText.setText('');
     }
 
-    // Bush indicator
-    const hasBush = inventory.hasBushCamo();
-    const bushActive = this.scene.get('GameScene')?.player?.isCamouflaged;
+    // Bush indicator — now checks armor system instead of weapon inventory
+    const gamePlayer = this.scene.get('GameScene')?.player;
+    const hasBush = gamePlayer?.armorSystem?.currentArmor?.id === 'bush';
+    const bushActive = gamePlayer?.isCamouflaged;
     this.bushIndicator.setAlpha(hasBush ? (bushActive ? 1 : 0.5) : 0.2);
     this.bushLabel.setAlpha(hasBush ? (bushActive ? 1 : 0.5) : 0.2);
     this.bushLabel.setFill(bushActive ? '#55ff55' : '#3a7a3a');

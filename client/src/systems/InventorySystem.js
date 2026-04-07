@@ -88,10 +88,6 @@ export default class InventorySystem {
     return false;
   }
 
-  hasBushCamo() {
-    return this.weapons[0] === 'bush' || this.weapons[1] === 'bush';
-  }
-
   // --- Ammo management ---
 
   addAmmo(ammoType, quantity) {

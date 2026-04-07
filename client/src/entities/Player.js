@@ -117,58 +117,68 @@ export default class Player {
     this._camoSprite.setVisible(true);
     this.sprite.setAlpha(0);
     if (this.accSprite) this.accSprite.setAlpha(0);
-    this.nameLabel.setAlpha(0);
+    this._hideCamoInfo();
   }
 
   deactivateCamouflage() {
     if (!this.isCamouflaged) return;
     this.isCamouflaged = false;
 
+    if (this._camoRevealTimer) {
+      clearTimeout(this._camoRevealTimer);
+      this._camoRevealTimer = null;
+    }
+
     this.sprite.setAlpha(1);
     if (this.accSprite) this.accSprite.setAlpha(1);
     this.nameLabel.setAlpha(1);
+    this.hpBar.setAlpha(1);
+    this.hpBarBg.setAlpha(1);
+    this.armorBar.setAlpha(1);
+    this.armorBarBg.setAlpha(1);
 
-    if (this._camoSprite) this._camoSprite.setVisible(false);
-  }
-
-  // Call every frame when camouflaged; speed in px/s
-  updateCamouflage(speed) {
-    if (!this.isCamouflaged) return;
-
-    if (speed === 0) {
-      // Fully invisible
-      if (this._camoSprite) this._camoSprite.setAlpha(1);
-      this.sprite.setAlpha(0);
-    } else if (speed <= 80) {
-      // Half visible
-      if (this._camoSprite) this._camoSprite.setAlpha(0.8);
-      this.sprite.setAlpha(0.5);
-      if (this.accSprite) this.accSprite.setAlpha(0.5);
-    } else if (speed <= 150) {
-      // Mostly visible
-      if (this._camoSprite) this._camoSprite.setAlpha(0.5);
-      this.sprite.setAlpha(0.8);
-      if (this.accSprite) this.accSprite.setAlpha(0.8);
-    } else {
-      // Too fast — camouflage breaks
-      this.deactivateCamouflage();
-      this._shakeCamoBush();
+    if (this._camoSprite) {
+      this._camoSprite.destroy();
+      this._camoSprite = null;
     }
   }
 
-  _shakeCamoBush() {
-    if (!this._camoSprite) return;
-    this._camoSprite.setVisible(true);
-    this.scene.tweens.add({
-      targets: this._camoSprite,
-      x: this.sprite.x + 4,
-      duration: 60,
-      yoyo: true,
-      repeat: 3,
-      onComplete: () => {
-        if (this._camoSprite) this._camoSprite.setVisible(false);
-      }
-    });
+  // Temporarily reveal name/HP/armor bars while camouflaged, then re-hide
+  revealCamoInfo(durationMs = 5000) {
+    if (!this.isCamouflaged) return;
+
+    if (this._camoRevealTimer) {
+      clearTimeout(this._camoRevealTimer);
+    }
+
+    this.nameLabel.setAlpha(1);
+    this.hpBar.setAlpha(1);
+    this.hpBarBg.setAlpha(1);
+    this.armorBar.setAlpha(1);
+    this.armorBarBg.setAlpha(1);
+
+    this._camoRevealTimer = setTimeout(() => {
+      this._camoRevealTimer = null;
+      if (this.isCamouflaged) this._hideCamoInfo();
+    }, durationMs);
+  }
+
+  _hideCamoInfo() {
+    this.nameLabel.setAlpha(0);
+    this.hpBar.setAlpha(0);
+    this.hpBarBg.setAlpha(0);
+    this.armorBar.setAlpha(0);
+    this.armorBarBg.setAlpha(0);
+  }
+
+  // Ensure camo visuals stay enforced every frame
+  updateCamouflage() {
+    if (!this.isCamouflaged) return;
+
+    // Player always looks like a bush — avatar always hidden
+    this.sprite.setAlpha(0);
+    if (this.accSprite) this.accSprite.setAlpha(0);
+    if (this._camoSprite) this._camoSprite.setAlpha(1);
   }
 
   // ---- Death ----

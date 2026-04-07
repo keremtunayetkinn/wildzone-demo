@@ -15,14 +15,10 @@ export default class ArmorSystem {
       return true;
     }
 
-    if (armorData.level > this.currentArmor.level) {
-      this._setArmor(armorData);
-      return true;
-    }
-
-    // Same level: don't pick up (no repair)
-    // Lower level: keep current
-    return false;
+    // Any armor can replace any other armor (old one is dropped)
+    const old = this.currentArmor;
+    this._setArmor(armorData);
+    return old; // return replaced armor info for dropping
   }
 
   _setArmor(armorData) {
@@ -80,4 +76,5 @@ export default class ArmorSystem {
   getArmorName() {
     return this.currentArmor ? this.currentArmor.name : null;
   }
+
 }

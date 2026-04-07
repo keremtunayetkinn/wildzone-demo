@@ -1,6 +1,15 @@
 // wildzone/client/src/constants/armor.js
 
 export const ARMOR_TYPES = {
+  bush: {
+    id: 'bush',
+    name: 'Kamuflaj Elbisesi',
+    level: 0,
+    maxDurability: 25,
+    color: 0x33aa33,
+    rarity: 'uncommon',
+    spawnWeight: 8
+  },
   armor_1: {
     id: 'armor_1',
     name: 'Hafif Yelek',

@@ -166,7 +166,17 @@ export default class GameScene extends Phaser.Scene {
       this.player.updateArmorDisplay();
       this._updateHUD();
       this.cameras.main.shake(150, 0.008);
-      this.player.deactivateCamouflage();
+
+      // If camouflaged: bush armor broke → fully deactivate; otherwise just reveal temporarily
+      if (this.player.isCamouflaged) {
+        const bushArmorGone = !this.player.armorSystem.currentArmor ||
+                              this.player.armorSystem.currentArmor.id !== 'bush';
+        if (bushArmorGone) {
+          this.player.deactivateCamouflage();
+        } else {
+          this.player.revealCamoInfo();
+        }
+      }
     });
 
     this.network.onPlayerDied((data) => {
@@ -327,12 +337,6 @@ export default class GameScene extends Phaser.Scene {
       this.player.sprite.setVelocity(vx * speed, vy * speed);
     }
 
-    // Actual speed (px/s) for camouflage check
-    const actualSpeed = Math.sqrt(
-      this.player.sprite.body.velocity.x ** 2 +
-      this.player.sprite.body.velocity.y ** 2
-    );
-
     const rotation = this.input_sys.getAimAngle(
       this.player.sprite.x, this.player.sprite.y, cam
     );
@@ -340,7 +344,7 @@ export default class GameScene extends Phaser.Scene {
 
     // ── Camouflage update ─────────────────────────────────────────────────
     if (this.player.isCamouflaged) {
-      this.player.updateCamouflage(actualSpeed);
+      this.player.updateCamouflage();
     }
 
     // ── Barikat inşaat modu toggle (F) ───────────────────────────────────
@@ -391,21 +395,12 @@ export default class GameScene extends Phaser.Scene {
       this.weapon.startReload(inv);
     }
 
-    // ── Bush camouflage activate ──────────────────────────────────────────
     const currentWeapon = inv.getActiveWeaponData();
-    if (!this._buildMode && currentWeapon.type === 'utility' && currentWeapon.id === 'bush') {
-      if (this.input_sys.isFireDown() || this.input_sys.isInteractJustDown()) {
-        if (!this.player.isCamouflaged) {
-          this.player.activateCamouflage();
-          this.events.emit('inventory_changed');
-        }
-      }
-    }
 
     // ── Fire ──────────────────────────────────────────────────────────────
     if (!this._buildMode && this.input_sys.isFireDown() && currentWeapon.type !== 'utility') {
       if (this.player.isCamouflaged) {
-        this.player.deactivateCamouflage(); // fire breaks camo
+        this.player.revealCamoInfo(); // firing reveals info for 5s, then re-hides
       }
       const fired = this.weapon.tryFire(
         this.player.sprite.x, this.player.sprite.y,

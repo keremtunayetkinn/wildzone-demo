@@ -120,7 +120,6 @@ class GameRoom {
     if (!player || !player.alive) return false;
     const data = ARMOR_DATA[armorId];
     if (!data) return false;
-    if (player.armor && player.armor.level >= data.level) return false;
 
     // Zırh kuşanma cooldown'u — 5 saniyede bir (spam/hile önlemi)
     const now = Date.now();
