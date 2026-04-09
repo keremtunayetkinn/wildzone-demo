@@ -25,7 +25,7 @@ export default class HUDScene extends Phaser.Scene {
 
     // ── Top-right: player count ────────────────────────────────────────────
     this.add.rectangle(W - 8, 8, 150, 36, 0x000000, 0.65).setOrigin(1, 0);
-    this.countText = this.add.text(W - 140, 16, '👥 1 / 40', {
+    this.countText = this.add.text(W - 140, 16, '👥 1 / 20', {
       fontSize: '13px', fill: '#cccccc', fontFamily: 'monospace'
     });
 
@@ -174,6 +174,27 @@ export default class HUDScene extends Phaser.Scene {
     this._drawVignette(W, H);
     this._playerHUD.push(this.camoVignette);
 
+    // ── Zone timer (minimap altında, sol üst) ──────────────────────────────
+    // Minimap: x=10, y=10, 160x160 — timer hemen altına
+    const mmBottom = 10 + 160 + 4;   // MM_MARGIN + MM_SIZE + gap
+    const mmCenterX = 10 + 80;       // MM_MARGIN + MM_SIZE/2
+    this._zoneBg = this.add.rectangle(10, mmBottom, 160, 38, 0x000000, 0.7)
+      .setOrigin(0, 0);
+    this._zonePhaseText = this.add.text(mmCenterX, mmBottom + 4, 'Faz 1 / 6', {
+      fontSize: '11px', fill: '#ff6666', fontFamily: 'monospace'
+    }).setOrigin(0.5, 0);
+    this._zoneTimerText = this.add.text(mmCenterX, mmBottom + 18, '1:00', {
+      fontSize: '16px', fill: '#ffffff', fontFamily: 'monospace', fontStyle: 'bold'
+    }).setOrigin(0.5, 0);
+    this._playerHUD.push(this._zoneBg, this._zonePhaseText, this._zoneTimerText);
+
+    // ── Zone dışı uyarı (ekran ortası) ────────────────────────────────────
+    this._zoneWarning = this.add.text(W / 2, H / 3, '⚠ ALAN DIŞINDASIN!', {
+      fontSize: '20px', fill: '#ff4444', fontFamily: 'monospace',
+      stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5).setVisible(false).setAlpha(0);
+    this._zoneWarningActive = false;
+
     // Listen for game events
     const gameScene = this.scene.get('GameScene');
     if (gameScene) {
@@ -186,6 +207,10 @@ export default class HUDScene extends Phaser.Scene {
       gameScene.events.on('build_mode_changed', (active) => this._setBuildMode(active), this);
       gameScene.events.on('build_material_cycled', ({ label }) => this._updateBuildMat(label), this);
       gameScene.events.on('spectator_mode_changed', (active) => this.setSpectatorMode(active), this);
+      gameScene.events.on('zone_damage', () => this._flashZoneWarning(), this);
+      gameScene.events.on('zone_phase_change', (d) => this._onZonePhaseChange(d), this);
+      gameScene.events.on('zone_shrink_start', () => this._onZoneShrinkStart(), this);
+      gameScene.events.on('zone_finished', () => this._onZoneFinished(), this);
     }
 
     this.updateAmmo(0, 0);
@@ -385,5 +410,69 @@ export default class HUDScene extends Phaser.Scene {
     if (!gameScene || !gameScene.player) return;
     this.updateInventory(gameScene.player.inventory);
     this.updateArmor(gameScene.player.armorSystem);
+  }
+
+  // ── Zone HUD methods ───────────────────────────────────────────────────
+
+  updateZoneTimer(zoneSystem) {
+    if (!zoneSystem) return;
+    const info = zoneSystem.getTimerInfo();
+    const phase = info.phaseIndex + 1;
+    const total = info.total;
+
+    if (info.state === 'finished') {
+      this._zonePhaseText.setText('ZONE BİTTİ');
+      this._zoneTimerText.setText('☠');
+      return;
+    }
+
+    const secs = Math.ceil(info.remaining / 1000);
+    const min = Math.floor(secs / 60);
+    const sec = secs % 60;
+    const timeStr = `${min}:${sec.toString().padStart(2, '0')}`;
+
+    const stateLabel = info.state === 'shrinking' ? 'DARALIYOR' : 'Bekleme';
+    this._zonePhaseText.setText(`Faz ${phase}/${total}  ${stateLabel}`);
+    this._zoneTimerText.setText(timeStr);
+
+    // Shrinking sırasında kırmızı yanıp sönsün
+    if (info.state === 'shrinking') {
+      this._zoneTimerText.setFill('#ff4444');
+      this._zoneBg.setFillStyle(0x330000, 0.8);
+    } else {
+      this._zoneTimerText.setFill('#ffffff');
+      this._zoneBg.setFillStyle(0x000000, 0.7);
+    }
+  }
+
+  _onZonePhaseChange(data) {
+    const phase = data.phaseIndex + 1;
+    this._zonePhaseText.setText(`Faz ${phase}/6  Bekleme`);
+  }
+
+  _onZoneShrinkStart() {
+    this._zonePhaseText.setFill('#ff4444');
+  }
+
+  _onZoneFinished() {
+    this._zonePhaseText.setText('ZONE BİTTİ').setFill('#ff0000');
+    this._zoneTimerText.setText('☠').setFill('#ff0000');
+  }
+
+  _flashZoneWarning() {
+    if (this._zoneWarningActive) return;
+    this._zoneWarningActive = true;
+    this._zoneWarning.setVisible(true);
+    this.tweens.add({
+      targets: this._zoneWarning,
+      alpha: 1,
+      duration: 200,
+      yoyo: true,
+      hold: 600,
+      onComplete: () => {
+        this._zoneWarning.setAlpha(0).setVisible(false);
+        this._zoneWarningActive = false;
+      }
+    });
   }
 }

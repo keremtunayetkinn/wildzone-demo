@@ -24,10 +24,10 @@ export default class PropSystem {
     const W   = CONSTANTS.MAP_WIDTH;
     const H   = CONSTANTS.MAP_HEIGHT;
 
-    this._spawnType('tree',        110, rng, W, H, 60);
-    this._spawnType('rock',         32, rng, W, H, 40);
-    this._spawnType('bush_prop',    80, rng, W, H, 20);
-    this._spawnType('metal_crate',  20, rng, W, H, 40);
+    this._spawnType('tree',        220, rng, W, H, 60);
+    this._spawnType('rock',         64, rng, W, H, 40);
+    this._spawnType('bush_prop',   160, rng, W, H, 20);
+    this._spawnType('metal_crate',  40, rng, W, H, 40);
   }
 
   _spawnType(propType, count, rng, W, H, margin) {

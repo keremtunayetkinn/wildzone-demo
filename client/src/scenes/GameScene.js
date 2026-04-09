@@ -7,6 +7,10 @@ import LootSystem from '../systems/LootSystem.js';
 import PropSystem from '../systems/PropSystem.js';
 import MeleeSystem from '../systems/MeleeSystem.js';
 import BarricadeSystem from '../systems/BarricadeSystem.js';
+import ZoneSystem from '../systems/ZoneSystem.js';
+import ZoneDamageSystem from '../systems/ZoneDamageSystem.js';
+import ZoneRenderer from '../systems/ZoneRenderer.js';
+import MinimapSystem from '../systems/MinimapSystem.js';
 import Player from '../entities/Player.js';
 import RemotePlayer from '../entities/RemotePlayer.js';
 import TestBot from '../entities/TestBot.js';
@@ -48,6 +52,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Update HUD whenever inventory changes (loot pickup, reload, etc.)
     this.events.on('inventory_changed', () => this._updateHUD(), this);
+    this.events.on('zone_killed_player', () => this._handleLocalDeath(), this);
 
     this.input.mouse.disableContextMenu();
   }
@@ -103,6 +108,13 @@ export default class GameScene extends Phaser.Scene {
       this.events.emit('weaponready');
       this.events.emit('resource_changed', this.player.resources.getAll());
       data.players.forEach(p => this._addRemotePlayer(p));
+
+      // ── Zone systems ────────────────────────────────────────────────────
+      this.zoneSystem = new ZoneSystem(this);
+      this.zoneDamage = new ZoneDamageSystem(this, this.zoneSystem);
+      this.zoneRenderer = new ZoneRenderer(this, this.zoneSystem);
+      this.minimap = new MinimapSystem(this, this.zoneSystem);
+      this.zoneSystem.start();
 
       // Spawn loot after map and player are ready
       this.lootSystem.spawnInitialLoot();
@@ -208,7 +220,7 @@ export default class GameScene extends Phaser.Scene {
     });
 
     this.network.onRoomFull(() => {
-      alert('Oda dolu! (40/40 oyuncu)');
+      alert('Oda dolu! (20/20 oyuncu)');
       this.scene.start('LobbyScene');
     });
 
@@ -301,6 +313,17 @@ export default class GameScene extends Phaser.Scene {
       this.weapon.update(this.game.loop.delta / 1000);
       this.remotePlayers.forEach(rp => rp.update());
       for (const bot of this.testBots ?? []) bot.update(this.game.loop.delta);
+      // Zone keeps running in spectator mode
+      const msDelta = this.game.loop.delta;
+      const nowSpec = this.time.now;
+      this.zoneSystem?.update(msDelta);
+      this.zoneRenderer?.update(null);
+      this.minimap?.update(null, this.remotePlayers);
+      if (!this._lastZoneHudTime || nowSpec - this._lastZoneHudTime >= 500) {
+        this._lastZoneHudTime = nowSpec;
+        const hud = this.scene.get('HUDScene');
+        if (hud) hud.updateZoneTimer(this.zoneSystem);
+      }
       return;
     }
 
@@ -421,6 +444,21 @@ export default class GameScene extends Phaser.Scene {
     this.remotePlayers.forEach(rp => rp.update());
     for (const bot of this.testBots ?? []) bot.update(this.game.loop.delta);
     this._tickRegen(delta);
+
+    // ── Zone systems update ──────────────────────────────────────────────
+    const msDelta = this.game.loop.delta;
+    const now = this.time.now;
+    this.zoneSystem?.update(msDelta);
+    this.zoneDamage?.update(now, this.player);
+    this.zoneRenderer?.update(this.player);
+    this.minimap?.update(this.player, this.remotePlayers);
+
+    // Zone timer HUD — 500ms'de bir güncelle (dakika:saniye gösterimi)
+    if (!this._lastZoneHudTime || now - this._lastZoneHudTime >= 500) {
+      this._lastZoneHudTime = now;
+      const hud2 = this.scene.get('HUDScene');
+      if (hud2) hud2.updateZoneTimer(this.zoneSystem);
+    }
   }
 
   _updateHUD() {
@@ -446,6 +484,8 @@ export default class GameScene extends Phaser.Scene {
     const total = this._totalPlayers ?? rank;
     this.lootSystem.dropPlayerLoot(this.player);
     this.player.die();
+    const hud = this.scene.get('HUDScene');
+    if (hud) hud.updateHUDHP(0);
     this._updateHUD();
     this._showDeathScreen(rank, total);
   }
@@ -667,6 +707,10 @@ export default class GameScene extends Phaser.Scene {
   _returnToLobby() {
     this.weapon.disableZoom();
     this.propSystem?.clearAllRespawnTimers();
+    this.zoneSystem?.destroy();
+    this.zoneRenderer?.destroy();
+    this.minimap?.destroy();
+    this.zoneDamage?.destroy();
     this.network.destroy();
     this.scene.stop('HUDScene');
     this.scene.start('LobbyScene');

@@ -2,12 +2,12 @@
 import { WEAPONS } from '../constants/weapons.js';
 
 const BULLET_COLORS = {
-  pistol:  0xffee00,
-  shotgun: 0xff6600,
-  smg:     0x00ddff,
-  sniper:  0xdd00ff,
-  bazooka: 0xff3300,
-  harpoon: 0x4682B4
+  pistol:  0xffff00,
+  shotgun: 0xffff00,
+  smg:     0xffff00,
+  sniper:  0xffff00,
+  bazooka: 0xffff00,
+  harpoon: 0xffff00
 };
 
 export default class WeaponSystem {
@@ -299,7 +299,7 @@ export default class WeaponSystem {
   }
 
   _spawnBullet(x, y, angle, weapon, isLocal) {
-    const color = BULLET_COLORS[weapon.id] || 0xffee00;
+    const color = BULLET_COLORS[weapon.id] || 0xffff00;
     const isBazooka = weapon.id === 'bazooka';
     const isSniper = weapon.id === 'sniper';
     const isHarpoon = weapon.id === 'harpoon';
@@ -389,7 +389,7 @@ export default class WeaponSystem {
 
   spawnRemoteBullet(x, y, targetX, targetY) {
     const angle = Phaser.Math.Angle.Between(x, y, targetX, targetY);
-    const bullet = this.scene.add.rectangle(x, y, 7, 4, 0xffcc00).setDepth(2);
+    const bullet = this.scene.add.rectangle(x, y, 7, 4, 0xffff00).setDepth(2);
     bullet.isLocal = false;
     bullet.spawnX = x;
     bullet.spawnY = y;
