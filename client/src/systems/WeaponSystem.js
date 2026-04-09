@@ -7,7 +7,7 @@ const BULLET_COLORS = {
   smg:     0xffff00,
   sniper:  0xffff00,
   bazooka: 0xffff00,
-  harpoon: 0xffff00
+  harpoon: 0x888888
 };
 
 export default class WeaponSystem {

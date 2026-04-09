@@ -288,6 +288,7 @@ export default class LootSystem {
       message = `+${quantity} ${LOOT_NAMES[id] || id}`;
     } else if (type === 'armor') {
       const oldArmor = player.armorSystem.currentArmor;
+      this.scene.network?.sendPickupArmor(id);
       const equipped = player.armorSystem.equipArmor(id);
       if (equipped) {
         this.scene.network?.sendEquipArmor(id);

@@ -5,7 +5,7 @@ import CONSTANTS from '../constants.js';
 import { ZONE } from '../constants/zone.js';
 
 // Durum sabitleri
-const STATE = { WAITING: 'waiting', SHRINKING: 'shrinking', FINISHED: 'finished' };
+const STATE = { WAITING: 'waiting', SHRINKING: 'shrinking', SHIFTING: 'shifting', FINISHED: 'finished' };
 
 export default class ZoneSystem {
   constructor(scene) {
@@ -53,18 +53,50 @@ export default class ZoneSystem {
 
     if (this.state === STATE.WAITING) {
       if (stateElapsed >= phase.waitTime) {
-        // Bekleme bitti → daralma başlat
-        this.state = STATE.SHRINKING;
-        this._stateStart = this._elapsed;
         this._fromCenter = { ...this.center };
         this._fromRadius = this.radius;
-        this._calculateTarget(phase);
-        this.scene.events.emit('zone_shrink_start', {
-          phaseIndex: this.phaseIndex,
-          targetCenter: this.targetCenter,
-          targetRadius: this.targetRadius,
-          duration: phase.shrinkTime
-        });
+        this._stateStart = this._elapsed;
+
+        if (phase.shift) {
+          // Kayma fazı — küçülmez, sadece hareket eder
+          this.state = STATE.SHIFTING;
+          this._calculateShiftTarget();
+          this.scene.events.emit('zone_shift_start', {
+            phaseIndex: this.phaseIndex,
+            targetCenter: this.targetCenter,
+            duration: phase.shiftTime
+          });
+        } else {
+          // Normal daralma
+          this.state = STATE.SHRINKING;
+          this._calculateTarget(phase);
+          this.scene.events.emit('zone_shrink_start', {
+            phaseIndex: this.phaseIndex,
+            targetCenter: this.targetCenter,
+            targetRadius: this.targetRadius,
+            duration: phase.shrinkTime
+          });
+        }
+      }
+    } else if (this.state === STATE.SHIFTING) {
+      const t = Math.min(stateElapsed / phase.shiftTime, 1);
+      const eased = this._easeInOutCubic(t);
+
+      // Sadece merkez interpolasyonu — yarıçap sabit
+      this.center.x = this._fromCenter.x + (this.targetCenter.x - this._fromCenter.x) * eased;
+      this.center.y = this._fromCenter.y + (this.targetCenter.y - this._fromCenter.y) * eased;
+
+      if (t >= 1) {
+        this.center.x = this.targetCenter.x;
+        this.center.y = this.targetCenter.y;
+        this.scene.events.emit('zone_shift_complete', { phaseIndex: this.phaseIndex });
+
+        if (this.phaseIndex < ZONE.PHASES.length - 1) {
+          this._advancePhase();
+        } else {
+          this.state = STATE.FINISHED;
+          this.scene.events.emit('zone_finished');
+        }
       }
     } else if (this.state === STATE.SHRINKING) {
       const t = Math.min(stateElapsed / phase.shrinkTime, 1);
@@ -86,6 +118,7 @@ export default class ZoneSystem {
         if (this.phaseIndex < ZONE.PHASES.length - 1) {
           this._advancePhase();
         } else {
+          this.radius = 0; // Tüm harita tehlikeli
           this.state = STATE.FINISHED;
           this.scene.events.emit('zone_finished');
         }
@@ -125,6 +158,8 @@ export default class ZoneSystem {
     let remaining;
     if (this.state === STATE.WAITING) {
       remaining = Math.max(0, phase.waitTime - stateElapsed);
+    } else if (this.state === STATE.SHIFTING) {
+      remaining = Math.max(0, phase.shiftTime - stateElapsed);
     } else {
       remaining = Math.max(0, phase.shrinkTime - stateElapsed);
     }
@@ -145,8 +180,54 @@ export default class ZoneSystem {
     this._stateStart = this._elapsed;
     this.scene.events.emit('zone_phase_change', {
       phaseIndex: this.phaseIndex,
-      state: this.state
+      state: this.state,
+      total: ZONE.PHASES.length
     });
+  }
+
+  /** Kayma hedefi hesapla — olasılık bazlı, yarıçap sabit, sadece merkez kayar */
+  _calculateShiftTarget() {
+    const r = this.radius;
+    const CANDIDATES = 20;
+
+    // Geçerli alan: daire haritanın dışına taşmaz
+    const minX = r, maxX = CONSTANTS.MAP_WIDTH - r;
+    const minY = r, maxY = CONSTANTS.MAP_HEIGHT - r;
+
+    // Harita üzerinde rastgele aday noktalar üret
+    const candidates = [];
+    for (let i = 0; i < CANDIDATES; i++) {
+      const x = minX + Math.random() * (maxX - minX);
+      const y = minY + Math.random() * (maxY - minY);
+      const dist = Math.hypot(x - this.center.x, y - this.center.y);
+      candidates.push({ x, y, dist });
+    }
+
+    // Olasılık ağırlıkları: üstel azalma — yakın hedefler daha olası, uzak hedefler nadir ama mümkün
+    const mapDiag = Math.hypot(CONSTANTS.MAP_WIDTH, CONSTANTS.MAP_HEIGHT);
+    const decayScale = mapDiag * 0.35;
+
+    let totalWeight = 0;
+    const weights = [];
+    for (const c of candidates) {
+      const w = Math.exp(-c.dist / decayScale);
+      weights.push(w);
+      totalWeight += w;
+    }
+
+    // Ağırlıklı rastgele seçim
+    let roll = Math.random() * totalWeight;
+    let selected = candidates[0];
+    for (let i = 0; i < candidates.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) {
+        selected = candidates[i];
+        break;
+      }
+    }
+
+    this.targetCenter = { x: selected.x, y: selected.y };
+    this.targetRadius = r; // değişmez
   }
 
   /** Hedef merkez ve yarıçapı hesapla (rastgele, merkez çekimli) */

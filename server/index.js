@@ -53,7 +53,7 @@ io.on('connection', (socket) => {
     if (!data || typeof data.targetX !== 'number' || typeof data.targetY !== 'number') return;
     const shooter = room.getPlayer(socket.id);
     if (!shooter || !shooter.alive) return;
-    if (!room.canShoot(socket.id)) return; // Rate limit
+    if (!room.canShoot(socket.id, data.targetX, data.targetY)) return; // Rate limit
 
     socket.broadcast.emit('player:shot', {
       shooterId: shooter.id,
@@ -101,6 +101,11 @@ io.on('connection', (socket) => {
         if (winner) console.log(`Winner: ${winner.username}`);
       }
     }
+  });
+
+  socket.on('player:pickup_armor', (data) => {
+    if (!data || typeof data.armorId !== 'string') return;
+    room.pickupArmor(socket.id, data.armorId);
   });
 
   socket.on('player:equip_armor', (data) => {

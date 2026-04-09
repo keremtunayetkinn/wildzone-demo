@@ -150,12 +150,12 @@ export default class HUDScene extends Phaser.Scene {
     this._playerHUD.push(this.bushIndicator, this.bushLabel);
 
     // ── İnşaat modu göstergesi ────────────────────────────────────────────
-    this.buildModeBg = this.add.rectangle(W / 2, H - 75, 280, 44, 0x000000, 0.75)
+    this.buildModeBg = this.add.rectangle(W / 2, H - 112, 280, 44, 0x000000, 0.75)
       .setOrigin(0.5).setVisible(false);
-    this.buildModeText = this.add.text(W / 2, H - 84, '🔨 İNŞAAT MODU  [Sol Tık: Koy]  [F: Çık]', {
+    this.buildModeText = this.add.text(W / 2, H - 121, '🔨 İNŞAAT MODU  [Sol Tık: Koy]  [F: Çık]', {
       fontSize: '12px', fill: '#ffdd44', fontFamily: 'monospace'
     }).setOrigin(0.5).setVisible(false);
-    this.buildMatText = this.add.text(W / 2, H - 66, '[Q] Materyal: Ahşap', {
+    this.buildMatText = this.add.text(W / 2, H - 103, '[Q] Materyal: Ahşap', {
       fontSize: '12px', fill: '#cccccc', fontFamily: 'monospace'
     }).setOrigin(0.5).setVisible(false);
     this._playerHUD.push(this.buildModeBg, this.buildModeText, this.buildMatText);
@@ -210,6 +210,7 @@ export default class HUDScene extends Phaser.Scene {
       gameScene.events.on('zone_damage', () => this._flashZoneWarning(), this);
       gameScene.events.on('zone_phase_change', (d) => this._onZonePhaseChange(d), this);
       gameScene.events.on('zone_shrink_start', () => this._onZoneShrinkStart(), this);
+      gameScene.events.on('zone_shift_start', () => this._onZoneShiftStart(), this);
       gameScene.events.on('zone_finished', () => this._onZoneFinished(), this);
     }
 
@@ -431,14 +432,19 @@ export default class HUDScene extends Phaser.Scene {
     const sec = secs % 60;
     const timeStr = `${min}:${sec.toString().padStart(2, '0')}`;
 
-    const stateLabel = info.state === 'shrinking' ? 'DARALIYOR' : 'Bekleme';
+    let stateLabel;
+    if (info.state === 'shrinking') stateLabel = 'DARALIYOR';
+    else if (info.state === 'shifting') stateLabel = 'KAYIYOR';
+    else stateLabel = 'Bekleme';
     this._zonePhaseText.setText(`Faz ${phase}/${total}  ${stateLabel}`);
     this._zoneTimerText.setText(timeStr);
 
-    // Shrinking sırasında kırmızı yanıp sönsün
     if (info.state === 'shrinking') {
       this._zoneTimerText.setFill('#ff4444');
       this._zoneBg.setFillStyle(0x330000, 0.8);
+    } else if (info.state === 'shifting') {
+      this._zoneTimerText.setFill('#44aaff');
+      this._zoneBg.setFillStyle(0x001a33, 0.8);
     } else {
       this._zoneTimerText.setFill('#ffffff');
       this._zoneBg.setFillStyle(0x000000, 0.7);
@@ -447,11 +453,16 @@ export default class HUDScene extends Phaser.Scene {
 
   _onZonePhaseChange(data) {
     const phase = data.phaseIndex + 1;
-    this._zonePhaseText.setText(`Faz ${phase}/6  Bekleme`);
+    const total = data.total || 5;
+    this._zonePhaseText.setText(`Faz ${phase}/${total}  Bekleme`);
   }
 
   _onZoneShrinkStart() {
     this._zonePhaseText.setFill('#ff4444');
+  }
+
+  _onZoneShiftStart() {
+    this._zonePhaseText.setFill('#44aaff');
   }
 
   _onZoneFinished() {

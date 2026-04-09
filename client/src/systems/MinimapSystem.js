@@ -103,12 +103,13 @@ export default class MinimapSystem {
     g.lineStyle(1.5, 0x44ff44, 0.9);
     g.strokeCircle(mcx, mcy, mr);
 
-    // Hedef alan (shrinking sırasında)
-    if (info.state === 'shrinking') {
+    // Hedef alan (shrinking veya shifting sırasında)
+    if (info.state === 'shrinking' || info.state === 'shifting') {
       const tcx = ox + this.zone.targetCenter.x * s;
       const tcy = oy + this.zone.targetCenter.y * s;
       const tr = this.zone.targetRadius * s;
-      g.lineStyle(1, 0xffffff, 0.5);
+      const color = info.state === 'shifting' ? 0x44aaff : 0xffffff;
+      g.lineStyle(1, color, 0.5);
       g.strokeCircle(tcx, tcy, tr);
     }
   }

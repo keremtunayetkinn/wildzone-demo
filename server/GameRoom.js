@@ -13,7 +13,8 @@ class GameRoom {
     this.shootCooldowns = new Map();
     this.moveCooldowns = new Map();
     this.armorEquipCooldowns = new Map();
-    this.pendingHits = new Set(); // player:shoot çağrılan ama henüz player:hit gelmeyen oyuncular
+    this.pendingHits = new Map(); // socketId -> { targetX, targetY } atış yönü kaydı
+    this.armorInventory = new Map(); // socketId -> Set<armorId> toplanan zırhlar
   }
 
   canJoin() {
@@ -51,6 +52,7 @@ class GameRoom {
     this.moveCooldowns.delete(socketId);
     this.armorEquipCooldowns.delete(socketId);
     this.pendingHits.delete(socketId);
+    this.armorInventory.delete(socketId);
   }
 
   getPlayer(socketId) {
@@ -91,12 +93,12 @@ class GameRoom {
     return true;
   }
 
-  canShoot(socketId) {
+  canShoot(socketId, targetX, targetY) {
     const now = Date.now();
     const last = this.shootCooldowns.get(socketId) || 0;
     if (now - last < CONSTANTS.PISTOL_COOLDOWN) return false;
     this.shootCooldowns.set(socketId, now);
-    this.pendingHits.add(socketId); // atış kaydedildi, isabet bekleniyor
+    this.pendingHits.set(socketId, { targetX, targetY }); // atış yönü kaydedildi
     return true;
   }
 
@@ -115,11 +117,29 @@ class GameRoom {
     return count;
   }
 
+  pickupArmor(socketId, armorId) {
+    const player = this.players.get(socketId);
+    if (!player || !player.alive) return false;
+    if (!ARMOR_DATA[armorId]) return false;
+
+    if (!this.armorInventory.has(socketId)) {
+      this.armorInventory.set(socketId, new Set());
+    }
+    const inv = this.armorInventory.get(socketId);
+    if (inv.size >= 3) return false; // envanter spam koruması
+    inv.add(armorId);
+    return true;
+  }
+
   equipArmor(socketId, armorId) {
     const player = this.players.get(socketId);
     if (!player || !player.alive) return false;
     const data = ARMOR_DATA[armorId];
     if (!data) return false;
+
+    // Envanter kontrolü — önce pickup yapılmış olmalı
+    const inv = this.armorInventory.get(socketId);
+    if (!inv || !inv.has(armorId)) return false;
 
     // Zırh kuşanma cooldown'u — 5 saniyede bir (spam/hile önlemi)
     const now = Date.now();
@@ -127,6 +147,8 @@ class GameRoom {
     if (now - lastEquip < CONSTANTS.ARMOR_EQUIP_COOLDOWN) return false;
     this.armorEquipCooldowns.set(socketId, now);
 
+    // Envanterden tüket ve kuşan
+    inv.delete(armorId);
     player.armor = { ...data, durability: data.maxDurability };
     return true;
   }
@@ -140,7 +162,8 @@ class GameRoom {
 
   applyDamage(targetId, shooterSocketId) {
     // player:shoot çağrılmadan gelen player:hit event'lerini reddet
-    if (!this.pendingHits.has(shooterSocketId)) return null;
+    const shotData = this.pendingHits.get(shooterSocketId);
+    if (!shotData) return null;
     this.pendingHits.delete(shooterSocketId);
 
     // targetId socket ID veya UUID olabilir — ikisini de dene
@@ -153,6 +176,13 @@ class GameRoom {
     const dy = target.y - shooter.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > CONSTANTS.PISTOL_RANGE * 1.5) return null; // %50 gecikme toleransı
+
+    // Atış yönü doğrulaması — hedef, atış açısının ±45° konisinde olmalı
+    const shotAngle = Math.atan2(shotData.targetY - shooter.y, shotData.targetX - shooter.x);
+    const targetAngle = Math.atan2(target.y - shooter.y, target.x - shooter.x);
+    let angleDiff = Math.abs(shotAngle - targetAngle);
+    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+    if (angleDiff > Math.PI / 4) return null; // ±45° tolerans (gecikme payı)
 
     target.lastDamageTime = Date.now();
 

@@ -40,6 +40,10 @@ export default class NetworkSystem {
     this.socket.emit('player:hit', { targetSocketId });
   }
 
+  sendPickupArmor(armorId) {
+    this.socket.emit('player:pickup_armor', { armorId });
+  }
+
   sendEquipArmor(armorId) {
     this.socket.emit('player:equip_armor', { armorId });
   }

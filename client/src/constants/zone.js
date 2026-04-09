@@ -18,18 +18,16 @@ export const ZONE = {
 
   // Faz tablosu — toplam 380 saniye (6dk 20sn)
   PHASES: [
-    // Phase 1: wait 60s + shrink 40s = 100s (cumulative: 1:40)
-    { waitTime: 60000, shrinkTime: 40000, targetRadius: 2200, damagePerTick: 3,  tickInterval: 1000 },
-    // Phase 2: wait 50s + shrink 35s = 85s  (cumulative: 3:05)
-    { waitTime: 50000, shrinkTime: 35000, targetRadius: 1400, damagePerTick: 5,  tickInterval: 1000 },
-    // Phase 3: wait 40s + shrink 30s = 70s  (cumulative: 4:15)
-    { waitTime: 40000, shrinkTime: 30000, targetRadius: 800,  damagePerTick: 7,  tickInterval: 1000 },
-    // Phase 4: wait 30s + shrink 25s = 55s  (cumulative: 5:10)
-    { waitTime: 30000, shrinkTime: 25000, targetRadius: 400,  damagePerTick: 11, tickInterval: 500  },
-    // Phase 5: wait 20s + shrink 15s = 35s  (cumulative: 5:45)
-    { waitTime: 20000, shrinkTime: 15000, targetRadius: 150,  damagePerTick: 15, tickInterval: 500  },
-    // Phase 6: wait 10s + shrink 25s = 35s  (cumulative: 6:20)
-    { waitTime: 10000, shrinkTime: 25000, targetRadius: 50,   damagePerTick: 24, tickInterval: 250  },
+    // Phase 1: wait 70s + shrink 40s = 110s (cumulative: 1:50)
+    { waitTime: 70000, shrinkTime: 40000, targetRadius: 2200, damagePerTick: 2.5,  tickInterval: 1000 },
+    // Phase 2: wait 60s + shrink 35s = 95s  (cumulative: 3:25)
+    { waitTime: 60000, shrinkTime: 35000, targetRadius: 1400, damagePerTick: 3.5,  tickInterval: 1000 },
+    // Phase 3 (SHIFT): wait 50s + shift 35s = 85s (cumulative: 4:50) — küçülmez, kayar
+    { waitTime: 50000, shift: true, shiftTime: 35000, targetRadius: 1400, damagePerTick: 5.5, tickInterval: 1000 },
+    // Phase 4: wait 30s + shrink 25s = 55s  (cumulative: 5:45)
+    { waitTime: 30000, shrinkTime: 25000, targetRadius: 400,  damagePerTick: 7.5, tickInterval: 500  },
+    // Phase 5: wait 20s + shrink 15s = 35s  (cumulative: 6:20)
+    { waitTime: 20000, shrinkTime: 15000, targetRadius: 150,  damagePerTick: 8.0, tickInterval: 500  },
   ],
 
   // Renk — KIRMIZI (kullanıcı talebi: kırmızı saydam filtre)

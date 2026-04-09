@@ -140,6 +140,9 @@ export default class ZoneRenderer {
     if (info.state === 'shrinking') {
       g.lineStyle(2, 0xffffff, 0.6);
       this._drawDashedCircle(g, tcx, tcy, tr, 64);
+    } else if (info.state === 'shifting') {
+      g.lineStyle(2, 0x44aaff, 0.6);
+      this._drawDashedCircle(g, tcx, tcy, tr, 64);
     }
   }
 
