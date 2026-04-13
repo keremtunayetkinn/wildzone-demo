@@ -222,6 +222,9 @@ export default class MeleeSystem {
     const damage = weapon.damage;
     const weaponId = weapon.id;
 
+    // Yumruk hariç tüm yakın dövüş silahları düşmana iki kat hasar verir
+    const enemyDamage = (weapon.type === 'melee' && weaponId !== 'fist') ? damage * 2 : damage;
+
     // 1: Barikatlar
     const barricades = this.scene.barricadeSystem?.activeBarricades ?? [];
     for (const b of barricades) {
@@ -232,7 +235,7 @@ export default class MeleeSystem {
     }
 
     // 2: Düşman entity'ler
-    const fakeHit = { _damage: damage };
+    const fakeHit = { _damage: enemyDamage };
     for (const { sprite, onHit } of this._playerTargets) {
       if (!sprite.active) continue;
       if (isInMeleeArc(x, y, angle, sprite.x, sprite.y, range)) {

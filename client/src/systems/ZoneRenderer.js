@@ -1,30 +1,34 @@
 // wildzone/client/src/systems/ZoneRenderer.js
 // Zone dışı kırmızı overlay + güvenli alan sınırı + hedef sınırı çizimi
+//
+// Overlay artık world-space Graphics + GeometryMask kullanıyor.
+// Mask, render aşamasında kamera dönüşümünden geçtiği için
+// kamera follow-lerp gecikmesi sorunu ortadan kalkar.
 
+import CONSTANTS from '../constants.js';
 import { ZONE } from '../constants/zone.js';
+
+const PAD = 1000; // harita kenarı taşma payı
 
 export default class ZoneRenderer {
   constructor(scene, zoneSystem) {
     this.scene = scene;
     this.zone = zoneSystem;
 
-    // ── Kırmızı zone overlay (viewport-sized RT, screen-space) ──────────
-    const vw = scene.scale.width;
-    const vh = scene.scale.height;
+    // ── Kırmızı zone overlay (world-space, tüm haritayı kaplar) ─────────
+    this._overlay = scene.add.graphics().setDepth(90).setAlpha(ZONE.OVERLAY_ALPHA);
+    this._overlay.fillStyle(ZONE.OVERLAY_COLOR, 1);
+    this._overlay.fillRect(
+      -PAD, -PAD,
+      CONSTANTS.MAP_WIDTH + PAD * 2,
+      CONSTANTS.MAP_HEIGHT + PAD * 2
+    );
 
-    this._rt = scene.add.renderTexture(0, 0, vw, vh)
-      .setOrigin(0, 0)
-      .setDepth(90)
-      .setAlpha(ZONE.OVERLAY_ALPHA)
-      .setScrollFactor(0);
-
-    // Dolgu grafik objesi (kırmızı dikdörtgen — viewport boyutunda)
-    this._fillGfx = scene.add.graphics().setVisible(false);
-    this._fillGfx.fillStyle(ZONE.OVERLAY_COLOR, 1);
-    this._fillGfx.fillRect(0, 0, vw, vh);
-
-    // Silme objesi (beyaz daire — güvenli alan)
-    this._eraseGfx = scene.add.graphics().setVisible(false);
+    // Mask shape (world-space daire — güvenli alan)
+    this._maskGfx = scene.make.graphics();
+    const mask = this._maskGfx.createGeometryMask();
+    mask.invertAlpha = true; // Dairenin DIŞINDA overlay görünür
+    this._overlay.setMask(mask);
 
     // ── Güvenli alan sınır çizgisi (mevcut) ──────────────────────────────
     this._borderGfx = scene.add.graphics().setDepth(91);
@@ -43,16 +47,14 @@ export default class ZoneRenderer {
     this._lastCY = -1;
     this._lastR  = -1;
 
-    // Overlay dirty flags — kamera scroll veya zone değişince yeniden çiz
-    this._lastOverlayCX = -1;
-    this._lastOverlayCY = -1;
-    this._lastOverlayR  = -1;
-    this._lastCamScrollX = -1;
-    this._lastCamScrollY = -1;
-
     // Border throttle — shrinking sırasında 30fps yeterli
     this._lastBorderTime = -999;
     this._borderInterval = 33; // ms (~30fps)
+
+    // Mask dirty flag
+    this._lastMaskCX = -1;
+    this._lastMaskCY = -1;
+    this._lastMaskR  = -1;
 
     // Target border dirty flag — hedef sabit, sadece state değişince yeniden çiz
     this._lastTargetCX = -1;
@@ -81,42 +83,20 @@ export default class ZoneRenderer {
       }
     }
 
-    // Overlay (screen-space RT) — kamera scroll veya zone değişince yeniden çiz
-    const cam = this.scene.cameras.main;
-    const camScrollX = cam.scrollX;
-    const camScrollY = cam.scrollY;
-    const overlayDirty = cx !== this._lastOverlayCX || cy !== this._lastOverlayCY
-      || Math.abs(r - this._lastOverlayR) > 0.5
-      || camScrollX !== this._lastCamScrollX || camScrollY !== this._lastCamScrollY;
-    if (overlayDirty) {
-      this._lastOverlayCX = cx;
-      this._lastOverlayCY = cy;
-      this._lastOverlayR  = r;
-      this._lastCamScrollX = camScrollX;
-      this._lastCamScrollY = camScrollY;
-      this._renderOverlay(cx, cy, r);
+    // Mask güncelle (world-space — kamera gecikmesi yok)
+    const maskDirty = cx !== this._lastMaskCX || cy !== this._lastMaskCY
+      || Math.abs(r - this._lastMaskR) > 0.5;
+    if (maskDirty) {
+      this._lastMaskCX = cx;
+      this._lastMaskCY = cy;
+      this._lastMaskR  = r;
+      this._maskGfx.clear();
+      this._maskGfx.fillStyle(0xffffff, 1);
+      this._maskGfx.fillCircle(cx, cy, Math.max(r, 0));
     }
 
     this._renderTargetBorderIfDirty();
     this._updateVignette(player);
-  }
-
-  // ── Overlay: kırmızı katman + güvenli alan deliği ────────────────────────
-
-  _renderOverlay(cx, cy, r) {
-    const cam = this.scene.cameras.main;
-    const sx = (cx - cam.scrollX) * cam.zoom;
-    const sy = (cy - cam.scrollY) * cam.zoom;
-    const sr = r * cam.zoom;
-
-    const rt = this._rt;
-    rt.clear();
-    rt.draw(this._fillGfx);
-
-    this._eraseGfx.clear();
-    this._eraseGfx.fillStyle(0xffffff, 1);
-    this._eraseGfx.fillCircle(sx, sy, sr);
-    rt.erase(this._eraseGfx);
   }
 
   // ── Güvenli alan sınır çizgisi ────────────────────────────────────────────
@@ -197,9 +177,11 @@ export default class ZoneRenderer {
   }
 
   destroy() {
-    this._rt?.destroy();
-    this._fillGfx?.destroy();
-    this._eraseGfx?.destroy();
+    if (this._overlay) {
+      this._overlay.clearMask(true); // mask'ı da temizle
+      this._overlay.destroy();
+    }
+    this._maskGfx?.destroy();
     this._borderGfx?.destroy();
     this._targetBorderGfx?.destroy();
     this._vignette?.destroy();
