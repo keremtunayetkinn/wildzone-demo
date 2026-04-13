@@ -43,9 +43,12 @@ export default class ZoneRenderer {
     this._lastCY = -1;
     this._lastR  = -1;
 
-    // Overlay throttle — viewport-sized RT, 20fps yeterli
-    this._lastOverlayTime = -999;
-    this._overlayInterval = 50; // ms
+    // Overlay dirty flags — kamera scroll veya zone değişince yeniden çiz
+    this._lastOverlayCX = -1;
+    this._lastOverlayCY = -1;
+    this._lastOverlayR  = -1;
+    this._lastCamScrollX = -1;
+    this._lastCamScrollY = -1;
 
     // Border throttle — shrinking sırasında 30fps yeterli
     this._lastBorderTime = -999;
@@ -78,9 +81,19 @@ export default class ZoneRenderer {
       }
     }
 
-    // Overlay (screen-space RT) — kamera veya zone hareket ettiğinde yeniden çiz
-    if (now - this._lastOverlayTime >= this._overlayInterval) {
-      this._lastOverlayTime = now;
+    // Overlay (screen-space RT) — kamera scroll veya zone değişince yeniden çiz
+    const cam = this.scene.cameras.main;
+    const camScrollX = cam.scrollX;
+    const camScrollY = cam.scrollY;
+    const overlayDirty = cx !== this._lastOverlayCX || cy !== this._lastOverlayCY
+      || Math.abs(r - this._lastOverlayR) > 0.5
+      || camScrollX !== this._lastCamScrollX || camScrollY !== this._lastCamScrollY;
+    if (overlayDirty) {
+      this._lastOverlayCX = cx;
+      this._lastOverlayCY = cy;
+      this._lastOverlayR  = r;
+      this._lastCamScrollX = camScrollX;
+      this._lastCamScrollY = camScrollY;
       this._renderOverlay(cx, cy, r);
     }
 
@@ -92,8 +105,9 @@ export default class ZoneRenderer {
 
   _renderOverlay(cx, cy, r) {
     const cam = this.scene.cameras.main;
-    const sx = cx - cam.scrollX;
-    const sy = cy - cam.scrollY;
+    const sx = (cx - cam.scrollX) * cam.zoom;
+    const sy = (cy - cam.scrollY) * cam.zoom;
+    const sr = r * cam.zoom;
 
     const rt = this._rt;
     rt.clear();
@@ -101,7 +115,7 @@ export default class ZoneRenderer {
 
     this._eraseGfx.clear();
     this._eraseGfx.fillStyle(0xffffff, 1);
-    this._eraseGfx.fillCircle(sx, sy, r);
+    this._eraseGfx.fillCircle(sx, sy, sr);
     rt.erase(this._eraseGfx);
   }
 
