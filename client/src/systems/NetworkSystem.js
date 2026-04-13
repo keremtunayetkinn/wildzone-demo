@@ -48,6 +48,10 @@ export default class NetworkSystem {
     this.socket.emit('player:equip_armor', { armorId });
   }
 
+  sendWeaponChange(weaponId) {
+    this.socket.emit('player:weapon', { weaponId });
+  }
+
   // --- Listen ---
 
   onPlayerJoined(callback) { this._on('player:joined', callback); }
@@ -59,6 +63,7 @@ export default class NetworkSystem {
   onPlayerDisconnect(callback) { this._on('player:disconnect', callback); }
   onRoomFull(callback)     { this._on('room:full', callback); }
   onGameWinner(callback)   { this._on('game:winner', callback); }
+  onPlayerWeaponChanged(callback) { this._on('player:weapon_changed', callback); }
 
   _on(event, callback) {
     this.socket.off(event); // prevent duplicate listeners

@@ -1,6 +1,7 @@
 import CONSTANTS from '../constants.js';
 
 const LERP = 0.2;
+const RANGED_WEAPONS = new Set(['pistol', 'shotgun', 'smg', 'sniper', 'bazooka', 'harpoon']);
 
 export default class RemotePlayer {
   constructor(scene, data) {
@@ -34,6 +35,9 @@ export default class RemotePlayer {
     // HP bar
     this.hpBarBg = scene.add.rectangle(data.x, data.y + 30, 44, 6, 0x333333).setDepth(4);
     this.hpBar   = scene.add.rectangle(data.x - 22, data.y + 30, 44, 6, 0x4caf50).setOrigin(0, 0.5).setDepth(5);
+
+    // Weapon sprite (set via setWeapon when network event arrives)
+    this.weaponSprite = null;
   }
 
   setTarget(x, y, rotation) {
@@ -55,6 +59,13 @@ export default class RemotePlayer {
     this.nameLabel.setPosition(x, y - 38);
     this.hpBarBg.setPosition(x, y + 30);
     this.hpBar.setPosition(x - 22, y + 30);
+
+    if (this.weaponSprite) {
+      const rot = this.sprite.rotation;
+      const dx = Math.cos(rot) * 16;
+      const dy = Math.sin(rot) * 16;
+      this.weaponSprite.setPosition(x + dx, y + dy).setRotation(rot);
+    }
   }
 
   setHP(hp) {
@@ -66,10 +77,23 @@ export default class RemotePlayer {
     else this.hpBar.setFillStyle(0xf44336);
   }
 
+  setWeapon(weaponId) {
+    if (this.weaponSprite) {
+      this.weaponSprite.destroy();
+      this.weaponSprite = null;
+    }
+    if (weaponId && RANGED_WEAPONS.has(weaponId)) {
+      this.weaponSprite = this.scene.add.image(this.sprite.x, this.sprite.y, weaponId)
+        .setDisplaySize(32, 11)
+        .setOrigin(0, 0.5)
+        .setDepth(2.5);
+    }
+  }
+
   die() {
     this.alive = false;
     this.scene.tweens.add({
-      targets: [this.sprite, this.accSprite, this.nameLabel, this.hpBar, this.hpBarBg].filter(Boolean),
+      targets: [this.sprite, this.accSprite, this.weaponSprite, this.nameLabel, this.hpBar, this.hpBarBg].filter(Boolean),
       alpha: 0,
       duration: 1500,
       onComplete: () => this.destroy()
@@ -77,7 +101,7 @@ export default class RemotePlayer {
   }
 
   destroy() {
-    [this.sprite, this.accSprite, this.nameLabel, this.hpBar, this.hpBarBg]
+    [this.sprite, this.accSprite, this.weaponSprite, this.nameLabel, this.hpBar, this.hpBarBg]
       .filter(Boolean)
       .forEach(obj => obj.destroy());
   }

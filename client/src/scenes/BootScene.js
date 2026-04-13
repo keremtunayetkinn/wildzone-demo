@@ -21,18 +21,9 @@ export default class BootScene extends Phaser.Scene {
 
     charColors.forEach((color, i) => {
       const g = this.make.graphics({ x: 0, y: 0, add: false });
-      for (let frame = 0; frame < 4; frame++) {
-        const fx = frame * 64;
-        g.fillStyle(color, 1);
-        g.fillCircle(fx + 32, 20, 16);
-        g.fillRect(fx + 20, 36, 24, 28);
-        g.fillStyle(0x222222, 1);
-        g.fillRect(fx + 14, 40, 8, 20);
-        g.fillRect(fx + 42, 40, 8, 20);
-        g.fillRect(fx + 22, 64, 8, 14);
-        g.fillRect(fx + 34, 64, 8, 14);
-      }
-      g.generateTexture(charNames[i], 256, 80);
+      g.fillStyle(color, 1);
+      g.fillCircle(20, 20, 20);
+      g.generateTexture(charNames[i], 40, 40);
       g.destroy();
     });
 
@@ -129,6 +120,13 @@ export default class BootScene extends Phaser.Scene {
     baz.fillStyle(0x888888, 1); baz.fillRect(10, 7, 12, 4);
     baz.generateTexture('bazooka', 44, 18);
     baz.destroy();
+
+    // Harpoon pickup
+    const hpg = this.make.graphics({ x: 0, y: 0, add: false });
+    hpg.fillStyle(0x888888, 1); hpg.fillRect(0, 5, 34, 6); hpg.fillRect(6, 3, 6, 10);
+    hpg.fillStyle(0xaaaaaa, 1); hpg.fillTriangle(34, 8, 42, 5, 42, 11);
+    hpg.generateTexture('harpoon', 44, 16);
+    hpg.destroy();
 
     // Bush camo pickup (used as camouflage sprite overlay on player)
     const bcg = this.make.graphics({ x: 0, y: 0, add: false });

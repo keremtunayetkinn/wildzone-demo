@@ -50,7 +50,7 @@ export const WEAPONS = {
     ammoType: 'ammo_shotgun',
     magazineSize: 6,
     maxAmmo: 30,
-    reloadTime: 600,
+    reloadTime: 1200,
     reloadType: 'per_shell',
     bulletSpeed: 500,
     spread: 25,

@@ -118,7 +118,6 @@ export default class ZoneSystem {
         if (this.phaseIndex < ZONE.PHASES.length - 1) {
           this._advancePhase();
         } else {
-          this.radius = 0; // Tüm harita tehlikeli
           this.state = STATE.FINISHED;
           this.scene.events.emit('zone_finished');
         }

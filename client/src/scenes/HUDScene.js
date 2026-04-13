@@ -161,9 +161,9 @@ export default class HUDScene extends Phaser.Scene {
     this._playerHUD.push(this.buildModeBg, this.buildModeText, this.buildMatText);
 
     // ── Reload bar ────────────────────────────────────────────────────────
-    this.reloadBg = this.add.rectangle(W / 2, H - 72, 220, 14, 0x000000, 0.75).setOrigin(0.5, 0.5).setVisible(false);
-    this.reloadBar = this.add.rectangle(W / 2 - 110 + 1, H - 72, 0, 12, 0xffaa00).setOrigin(0, 0.5).setVisible(false);
-    this.reloadText = this.add.text(W / 2, H - 72, 'Şarj ediliyor...', {
+    this.reloadBg = this.add.rectangle(W / 2, H - 100, 220, 14, 0x000000, 0.75).setOrigin(0.5, 0.5).setVisible(false);
+    this.reloadBar = this.add.rectangle(W / 2 - 110 + 1, H - 100, 0, 12, 0xffaa00).setOrigin(0, 0.5).setVisible(false);
+    this.reloadText = this.add.text(W / 2, H - 100, 'Şarj ediliyor...', {
       fontSize: '10px', fill: '#ffffff', fontFamily: 'monospace'
     }).setOrigin(0.5).setVisible(false);
     this._playerHUD.push(this.reloadBg, this.reloadBar, this.reloadText);

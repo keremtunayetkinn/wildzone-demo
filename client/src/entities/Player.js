@@ -4,6 +4,8 @@ import InventorySystem from '../systems/InventorySystem.js';
 import ArmorSystem from '../systems/ArmorSystem.js';
 import ResourceSystem from '../systems/ResourceSystem.js';
 
+const RANGED_WEAPONS = new Set(['pistol', 'shotgun', 'smg', 'sniper', 'bazooka', 'harpoon']);
+
 export default class Player {
   constructor(scene, x, y, character, accessory, username) {
     this.scene = scene;
@@ -28,6 +30,9 @@ export default class Player {
     // Camouflage state
     this.isCamouflaged = false;
     this._camoSprite = null;
+
+    // Weapon sprite (ranged weapons only)
+    this.weaponSprite = null;
 
     // Main sprite
     this.sprite = scene.physics.add.image(x, y, character).setDisplaySize(40, 40);
@@ -70,6 +75,12 @@ export default class Player {
 
     if (this._camoSprite) this._camoSprite.setPosition(x, y);
 
+    if (this.weaponSprite) {
+      const dx = Math.cos(rotation) * 16;
+      const dy = Math.sin(rotation) * 16;
+      this.weaponSprite.setPosition(x + dx, y + dy).setRotation(rotation);
+    }
+
     this._updateHPBarColor();
   }
 
@@ -102,6 +113,21 @@ export default class Player {
     return net;
   }
 
+  // ---- Weapon sprite ----
+
+  setWeapon(weaponId) {
+    if (this.weaponSprite) {
+      this.weaponSprite.destroy();
+      this.weaponSprite = null;
+    }
+    if (weaponId && RANGED_WEAPONS.has(weaponId)) {
+      this.weaponSprite = this.scene.add.image(this.sprite.x, this.sprite.y, weaponId)
+        .setDisplaySize(32, 11)
+        .setOrigin(0, 0.5)
+        .setDepth(2.5);
+    }
+  }
+
   // ---- Camouflage ----
 
   activateCamouflage() {
@@ -117,6 +143,7 @@ export default class Player {
     this._camoSprite.setVisible(true);
     this.sprite.setAlpha(0);
     if (this.accSprite) this.accSprite.setAlpha(0);
+    if (this.weaponSprite) this.weaponSprite.setAlpha(0);
     this._hideCamoInfo();
   }
 
@@ -131,6 +158,7 @@ export default class Player {
 
     this.sprite.setAlpha(1);
     if (this.accSprite) this.accSprite.setAlpha(1);
+    if (this.weaponSprite) this.weaponSprite.setAlpha(1);
     this.nameLabel.setAlpha(1);
     this.hpBar.setAlpha(1);
     this.hpBarBg.setAlpha(1);
@@ -169,6 +197,7 @@ export default class Player {
     this.hpBarBg.setAlpha(0);
     this.armorBar.setAlpha(0);
     this.armorBarBg.setAlpha(0);
+    if (this.weaponSprite) this.weaponSprite.setAlpha(0);
   }
 
   // Ensure camo visuals stay enforced every frame
@@ -178,6 +207,7 @@ export default class Player {
     // Player always looks like a bush — avatar always hidden
     this.sprite.setAlpha(0);
     if (this.accSprite) this.accSprite.setAlpha(0);
+    if (this.weaponSprite) this.weaponSprite.setAlpha(0);
     if (this._camoSprite) this._camoSprite.setAlpha(1);
   }
 
@@ -188,7 +218,7 @@ export default class Player {
     this.deactivateCamouflage();
     this.sprite.setTint(0x666666);
     this.scene.tweens.add({
-      targets: [this.sprite, this.accSprite, this.nameLabel, this.hpBar, this.hpBarBg, this.armorBar, this.armorBarBg, this._camoSprite].filter(Boolean),
+      targets: [this.sprite, this.accSprite, this.weaponSprite, this.nameLabel, this.hpBar, this.hpBarBg, this.armorBar, this.armorBarBg, this._camoSprite].filter(Boolean),
       alpha: 0,
       duration: 1500,
       onComplete: () => this.destroy()
@@ -196,7 +226,7 @@ export default class Player {
   }
 
   destroy() {
-    [this.sprite, this.accSprite, this.nameLabel, this.hpBar, this.hpBarBg, this.armorBar, this.armorBarBg, this._camoSprite]
+    [this.sprite, this.accSprite, this.weaponSprite, this.nameLabel, this.hpBar, this.hpBarBg, this.armorBar, this.armorBarBg, this._camoSprite]
       .filter(Boolean)
       .forEach(obj => obj.destroy());
   }

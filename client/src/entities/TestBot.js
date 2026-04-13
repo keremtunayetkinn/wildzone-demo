@@ -32,6 +32,10 @@ export default class TestBot {
     this.hpBarBg = scene.add.rectangle(x, y - 38, 50, 5, 0x333333).setDepth(4);
     this.hpBar   = scene.add.rectangle(x - 25, y - 38, 50, 5, 0x4caf50).setOrigin(0, 0.5).setDepth(5);
 
+    // Weapon sprite (pistol)
+    this.weaponSprite = scene.add.image(x, y, 'pistol')
+      .setDisplaySize(32, 11).setOrigin(0, 0.5).setDepth(2.5);
+
     // Aktif mermi listesi (temizlik için)
     this._bullets = [];
   }
@@ -45,7 +49,10 @@ export default class TestBot {
     if (!target) return;
     const angle = Phaser.Math.Angle.Between(x, y, target.sprite.x, target.sprite.y);
 
-    const bullet = this.scene.add.rectangle(x + 24, y, 7, 4, BULLET_COLOR)
+    // Spawn from pistol muzzle tip: weapon sprite at +16px, 32px wide → tip at +48px
+    const muzzleX = x + Math.cos(angle) * 48;
+    const muzzleY = y + Math.sin(angle) * 48;
+    const bullet = this.scene.add.rectangle(muzzleX, muzzleY, 7, 4, BULLET_COLOR)
       .setDepth(2).setRotation(angle);
 
     this.scene.physics.add.existing(bullet);
@@ -54,8 +61,8 @@ export default class TestBot {
       Math.cos(angle) * BULLET_SPEED,
       Math.sin(angle) * BULLET_SPEED
     );
-    bullet._spawnX = x;
-    bullet._spawnY = y;
+    bullet._spawnX = muzzleX;
+    bullet._spawnY = muzzleY;
     this._bullets.push(bullet);
 
     const destroyBullet = () => {
@@ -166,7 +173,7 @@ export default class TestBot {
 
     if (this._onDied) this._onDied();
     this.scene.tweens.add({
-      targets: [this.sprite, this.nameLabel, this.hpBar, this.hpBarBg],
+      targets: [this.sprite, this.nameLabel, this.hpBar, this.hpBarBg, this.weaponSprite].filter(Boolean),
       alpha: 0, duration: 1000,
       onComplete: () => this.destroy()
     });
@@ -233,6 +240,13 @@ export default class TestBot {
       this.sprite.setRotation(angle);
     }
 
+    if (this.weaponSprite) {
+      const rot = this.sprite.rotation;
+      const dx = Math.cos(rot) * 16;
+      const dy = Math.sin(rot) * 16;
+      this.weaponSprite.setPosition(x + dx, y + dy).setRotation(rot);
+    }
+
     this._fireTimer += delta;
     if (this._fireTimer >= FIRE_INTERVAL) {
       this._fireTimer = 0;
@@ -241,7 +255,7 @@ export default class TestBot {
   }
 
   destroy() {
-    [this.sprite, this.nameLabel, this.hpBar, this.hpBarBg]
+    [this.sprite, this.nameLabel, this.hpBar, this.hpBarBg, this.weaponSprite]
       .forEach(o => o?.destroy());
   }
 }

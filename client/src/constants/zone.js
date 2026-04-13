@@ -26,8 +26,8 @@ export const ZONE = {
     { waitTime: 50000, shift: true, shiftTime: 35000, targetRadius: 1400, damagePerTick: 5.5, tickInterval: 1000 },
     // Phase 4: wait 30s + shrink 25s = 55s  (cumulative: 5:45)
     { waitTime: 30000, shrinkTime: 25000, targetRadius: 400,  damagePerTick: 7.5, tickInterval: 500  },
-    // Phase 5: wait 20s + shrink 15s = 35s  (cumulative: 6:20)
-    { waitTime: 20000, shrinkTime: 15000, targetRadius: 150,  damagePerTick: 8.0, tickInterval: 500  },
+    // Phase 5: wait 20s + shrink 15s = 35s  (cumulative: 6:20) — bir noktaya daralır
+    { waitTime: 20000, shrinkTime: 15000, targetRadius: 0,    damagePerTick: 8.0, tickInterval: 500  },
   ],
 
   // Renk — KIRMIZI (kullanıcı talebi: kırmızı saydam filtre)

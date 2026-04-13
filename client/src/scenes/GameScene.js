@@ -25,6 +25,7 @@ export default class GameScene extends Phaser.Scene {
     this._spectatorTarget = null;
     this._spectatorOverlay = null;
     this._gameOver = false;
+    this._lastWeaponId = null;
   }
 
   init(data) {
@@ -51,7 +52,18 @@ export default class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, CONSTANTS.MAP_WIDTH, CONSTANTS.MAP_HEIGHT);
 
     // Update HUD whenever inventory changes (loot pickup, reload, etc.)
-    this.events.on('inventory_changed', () => this._updateHUD(), this);
+    this.events.on('inventory_changed', () => {
+      this._updateHUD();
+      if (this.player && this.network) {
+        const weapon = this.player.inventory.getActiveWeaponData();
+        const weaponId = weapon?.id ?? null;
+        if (weaponId !== this._lastWeaponId) {
+          this._lastWeaponId = weaponId;
+          this.player.setWeapon(weaponId);
+          if (weaponId) this.network.sendWeaponChange(weaponId);
+        }
+      }
+    }, this);
     this.events.on('zone_killed_player', () => this._handleLocalDeath(), this);
 
     this.input.mouse.disableContextMenu();
@@ -224,6 +236,11 @@ export default class GameScene extends Phaser.Scene {
       this.scene.start('LobbyScene');
     });
 
+    this.network.onPlayerWeaponChanged((data) => {
+      const rp = this._getRemoteById(data.id);
+      if (rp) rp.setWeapon(data.weaponId);
+    });
+
     this.network.onGameWinner((data) => {
       if (this._gameOver) return;
       this._gameOver = true;
@@ -373,6 +390,10 @@ export default class GameScene extends Phaser.Scene {
     // ── Barikat inşaat modu toggle (F) ───────────────────────────────────
     if (this.barricadeSystem && this.input_sys.isBarricadeToggleJustDown()) {
       this._buildMode = !this._buildMode;
+      if (this._buildMode && this.weapon?.isReloading) {
+        this.weapon.cancelReload();
+        this.events.emit('reload_complete');
+      }
       if (!this._buildMode) this.barricadeSystem.hidePreview();
       this.events.emit('build_mode_changed', this._buildMode);
     }
@@ -421,7 +442,9 @@ export default class GameScene extends Phaser.Scene {
     const currentWeapon = inv.getActiveWeaponData();
 
     // ── Fire ──────────────────────────────────────────────────────────────
-    if (!this._buildMode && this.input_sys.isFireDown() && currentWeapon.type !== 'utility') {
+    const fireDown = this.input_sys.isFireDown();
+    const canFire = currentWeapon.isAutomatic ? fireDown : (fireDown && !this._prevFireDown);
+    if (!this._buildMode && canFire && currentWeapon.type !== 'utility') {
       if (this.player.isCamouflaged) {
         this.player.revealCamoInfo(); // firing reveals info for 5s, then re-hides
       }
@@ -433,6 +456,7 @@ export default class GameScene extends Phaser.Scene {
         this.events.emit('inventory_changed');
       }
     }
+    this._prevFireDown = fireDown;
 
     // ── Network position send (throttled inside NetworkSystem) ───────────
     this.network.sendMove(this.player.sprite.x, this.player.sprite.y, rotation);

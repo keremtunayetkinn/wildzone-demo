@@ -113,6 +113,13 @@ io.on('connection', (socket) => {
     room.equipArmor(socket.id, data.armorId);
   });
 
+  socket.on('player:weapon', (data) => {
+    if (!data || typeof data.weaponId !== 'string') return;
+    const player = room.getPlayer(socket.id);
+    if (!player || !player.alive) return;
+    socket.broadcast.emit('player:weapon_changed', { id: player.id, weaponId: data.weaponId });
+  });
+
   socket.on('disconnect', () => {
     const player = room.getPlayer(socket.id);
     if (player) {

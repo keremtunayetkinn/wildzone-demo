@@ -10,6 +10,20 @@ const BULLET_COLORS = {
   harpoon: 0x888888
 };
 
+// Weapon sprite starts 16px ahead of player center (setOrigin(0,0.5), offset 16px).
+// Muzzle = 16 + (barrel_tip_in_texture * displayWidth / textureWidth)
+// pistol:  16 + 24*(32/24) = 48   shotgun: 16 + 30*(32/32) = 46
+// smg:     16 + 26*(32/28) ≈ 46   sniper:  16 + 40*(32/42) ≈ 47
+// bazooka: 16 + 42*(32/44) ≈ 47   harpoon: 16 + 42*(32/44) ≈ 47
+const MUZZLE_OFFSETS = {
+  pistol:  48,
+  shotgun: 46,
+  smg:     46,
+  sniper:  47,
+  bazooka: 47,
+  harpoon: 47,
+};
+
 export default class WeaponSystem {
   constructor(scene) {
     this.scene = scene;
@@ -69,17 +83,22 @@ export default class WeaponSystem {
     this._lastFireTime[slot] = now;
     inventory.useAmmo();
 
+    // Calculate muzzle position for this weapon
+    const muzzleOffset = MUZZLE_OFFSETS[weapon.id] ?? 20;
+    const mx = x + Math.cos(angle) * muzzleOffset;
+    const my = y + Math.sin(angle) * muzzleOffset;
+
     // Fire by weapon type
     if (weapon.id === 'harpoon') {
-      this._fireHarpoon(x, y, angle, weapon);
+      this._fireHarpoon(mx, my, angle, weapon);
     } else if (weapon.id === 'shotgun') {
-      this._fireShotgun(x, y, angle, weapon);
+      this._fireShotgun(mx, my, angle, weapon);
     } else if (weapon.id === 'bazooka') {
-      this._fireMissile(x, y, angle, weapon);
+      this._fireMissile(mx, my, angle, weapon);
     } else {
       const spread = this._calcSpread(weapon);
       const jitter = (Math.random() - 0.5) * 2 * (spread * Math.PI / 180);
-      this._spawnBullet(x, y, angle + jitter, weapon, true);
+      this._spawnBullet(mx, my, angle + jitter, weapon, true);
     }
 
     // SMG warmup tracking
@@ -120,7 +139,7 @@ export default class WeaponSystem {
   }
 
   _fireShotgun(x, y, angle, weapon) {
-    // 6 pellets at ±25°, evenly distributed
+    // x, y is already the muzzle position (pre-calculated by tryFire)
     const angles = [-25, -15, -5, 5, 15, 25];
     angles.forEach(deg => {
       const a = angle + deg * Math.PI / 180;
@@ -343,7 +362,10 @@ export default class WeaponSystem {
     this.scene.events.emit('reload_start', { weaponId: weapon.id, duration: weapon.reloadTime });
 
     if (weapon.reloadType === 'per_shell') {
-      this._shotgunReloadStep(inventory);
+      this._reloadEvent = this.scene.time.addEvent({
+        delay: weapon.reloadTime,
+        callback: () => this._shotgunReloadStep(inventory)
+      });
     } else {
       this._reloadEvent = this.scene.time.addEvent({
         delay: weapon.reloadTime,
@@ -369,8 +391,9 @@ export default class WeaponSystem {
       return;
     }
 
+    const weapon = inventory.getActiveWeaponData();
     this._reloadEvent = this.scene.time.addEvent({
-      delay: 600,
+      delay: weapon.reloadTime,
       callback: () => this._shotgunReloadStep(inventory)
     });
   }
