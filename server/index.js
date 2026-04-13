@@ -9,6 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const room = new GameRoom();
+const VALID_WEAPONS = new Set(['pistol', 'shotgun', 'smg', 'sniper', 'bazooka', 'harpoon']);
 
 app.use(express.static(path.join(__dirname, '../client')));
 
@@ -114,7 +115,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('player:weapon', (data) => {
-    if (!data || typeof data.weaponId !== 'string') return;
+    if (!data || !VALID_WEAPONS.has(data.weaponId)) return;
     const player = room.getPlayer(socket.id);
     if (!player || !player.alive) return;
     socket.broadcast.emit('player:weapon_changed', { id: player.id, weaponId: data.weaponId });
